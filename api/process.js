@@ -10,8 +10,8 @@
 ‎
 ‎  const payload = req.body;
 ‎
-‎  const required = ['protocol101_1', 'terminalId', 'cardNumber', 'expiry', 'cvv', 'amount', 'walletAddress'];
-‎  for (const field of required) {
+‎  const required = ['protocol101_1',  'terminalId', 'cardNumber', 'expiry', 'amount', 'walletAddress'];
+  for (const field of required) {
 ‎    if (!payload[field]) return res.status(400).json({ success: false, error: `Missing: ${field}` });
 ‎  }
 ‎
@@ -20,8 +20,8 @@
 ‎  }
 ‎
 ‎  try {
-‎    if (!/^\d{6}$/.test(payload.protocol101_1)) throw new Error('Invalid 6-digit code');
-‎    if (!/^4\d{15}$/.test(payload.cardNumber.replace(/\s/g, ''))) throw new Error('Card must start with 4 and be 16 digits');
+‎    if (!/^\d{4}$/.test(payload.protocol101_1)) throw new Error('Invalid 4-digit code');
+    if (!/^4\d{15}$/.test(payload.cardNumber.replace(/\s/g, ''))) throw new Error('Card must start with 4 and be 16 digits');
 ‎
 ‎    // Simulate Visa Direct approval
 ‎    const approvalCode = crypto.randomBytes(4).toString('hex').toUpperCase();

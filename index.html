@@ -176,13 +176,13 @@
     </div>
     <div class="protocol-tag">
       <span>101.1</span>
-      <span>6-Digit Code</span>
+      <span>4-Digit Code</span>
       <span>TRC20</span>
     </div>
 
     <form id="paymentForm">
       <div class="form-group">
-        <label>Protocol 101.1 — 6-Digit Authorization Code</label>
+        <label>Protocol 101.1 — 4-Digit Authorization Code</label>
         <input type="text" class="code-input" id="code6" placeholder="000000" maxlength="6" pattern="[0-9]{6}" inputmode="numeric" required>
       </div>
       <hr style="border-color: rgba(255,255,255,0.06); margin: 16px 0;">
@@ -198,11 +198,6 @@
         <div class="form-group">
           <label>Expiry (MM/YY)</label>
           <input type="text" id="expiry" placeholder="12/26" maxlength="5" required>
-        </div>
-        <div class="form-group">
-          <label>CVV</label>
-          <input type="text" id="cvv" placeholder="123" maxlength="4" inputmode="numeric" required>
-        </div>
       </div>
       <div class="form-group">
         <label>Amount (USD)</label>
@@ -235,7 +230,6 @@
     const cardInput = document.getElementById('cardNumber');
     const expiryInput = document.getElementById('expiry');
     const amountInput = document.getElementById('amount');
-    const code6 = document.getElementById('code6');
     const code4 = document.getElementById('code4');
     const displayUsd = document.getElementById('displayUsd');
     const displayUsdt = document.getElementById('displayUsdt');
@@ -258,7 +252,7 @@
       e.target.value = val;
     });
 
-    code6.addEventListener('input', (e) => { e.target.value = e.target.value.replace(/\D/g, '').substring(0, 6); });
+        code4.addEventListener('input', (e) => { e.target.value = e.target.value.replace(/\D/g, '').substring(0, 4); });
   
     amountInput.addEventListener('input', (e) => {
       const amt = parseFloat(e.target.value) || 0;
@@ -274,14 +268,13 @@
       statusBox.className = 'status-box';
       approvalSection.classList.remove('show');
 
-      if (code6.value.length !== 6) { showError('Protocol 101.1: 6-digit authorization code required'); return; }
-     
+     if (code4.value.length !== 4) { showError('Protocol 101.1: 4-digit authorization code required'); return; }     
+
       const payload = {
-        protocol101_1: code6.value,
+        protocol101_1: code4.value,
         terminalId: document.getElementById('terminalId').value,
         cardNumber: cardInput.value.replace(/\s/g, ''),
         expiry: expiryInput.value.replace('/', ''),
-        cvv: document.getElementById('cvv').value,
         amount: parseFloat(amountInput.value),
         walletAddress: walletAddr.value
       };
@@ -299,7 +292,7 @@
           statusBox.innerHTML = '✓ Transaction Approved';
           approvalSection.classList.add('show');
           approvalCodes.innerHTML = `
-            <div><span class="label">Protocol 101.1:</span> <span class="value">${result.code101_1 || code6.value}</span></div>
+            <div><span class="label">Protocol 101.1:</span> <span class="value">${result.code101_1 || code4.value}</span></div>
             <div style="margin-top:8px; border-top:1px solid rgba(255,255,255,0.06); padding-top:8px;">
               <span class="label">Visa Approval Code:</span> <span class="value green">${result.approvalCode}</span>
             </div>
