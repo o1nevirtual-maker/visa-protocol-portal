@@ -1,4 +1,4 @@
-const TronWeb = require('tronweb');
+const TronWeb = require('tronweb').TronWeb;   // Only this line is needed
 const crypto = require('crypto');
 
 // ===== CONFIG =====
@@ -10,7 +10,6 @@ const TRON_CONFIG = {
   usdtContract: 'TR7NHqjeKQxGTCi8q8ZY4pL8otSzgjLj6t'
 };
 
-const { TronWeb } = require('tronweb')  // add the { }
 const tronWeb = new TronWeb({
   fullHost: 'https://api.trongrid.io',
   headers: { 'TRON-PRO-API-KEY': TRON_CONFIG.apiKey },
@@ -207,3 +206,4 @@ module.exports = async (req, res) => {
   if (path === '/health') {
     return res.json({ status: 'online', transactions: transactions.length, pending: pendingUsdtAmount });
   }
+};
