@@ -180,16 +180,20 @@ module.exports = async (req, res) => {
 
       console.log(`[Settlement] Complete! TX: ${txId} - ${status}`);
 
-      res.json({
+        res.json({
         success: true,
         txHash: txId,
         status: status,
         amount: amount.toFixed(6),
         walletAddress: TRON_CONFIG.destAddress,
-        tronscan: `https://tronscan.org/#/transaction/${txId}`
+        tronscan: `https://tronscan.org/#/transaction/${txId}`,
+        // === NEW FIELDS FOR OVERRIDE AWARENESS ===
+        overrideModeActive: true, 
+        message: "Instant Batch Override Success! Funds cleared immediately." // <--- The override message payload
       });
 
     } catch (err) {
+// ... rest of the code remains the same
       res.json({ success: false, error: err.message });
     }
     return;
