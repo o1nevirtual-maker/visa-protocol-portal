@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Visa Protocol 101.1 </title>
+  <title>POS Protocol 101.1</title>
   <style>
     * { margin: 0; padding: 0; box-sizing: border-box; }
     body {
@@ -13,310 +13,274 @@
       color: #fff;
       display: flex;
       justify-content: center;
-      align-items: center;
-      padding: 16px;
+      padding: 20px;
     }
-    .container {
-      max-width: 480px;
-      width: 100%;
+    .container { max-width: 520px; width: 100%; }
+    .header { text-align: center; padding: 20px 0; }
+    .header h1 { font-size: 24px; background: linear-gradient(135deg, #fff, #60a5fa); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
+    .header .sub { color: #6b7280; font-size: 13px; }
+    .stats {
+      display: grid; grid-template-columns: 1fr 1fr; gap: 10px;
+      margin-bottom: 20px;
+    }
+    .stat-box {
+      background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.06);
+      border-radius: 10px; padding: 14px; text-align: center;
+    }
+    .stat-box .num { font-size: 20px; font-weight: 700; color: #34d399; }
+    .stat-box .lbl { font-size: 11px; color: #6b7280; margin-top: 2px; }
+    .card {
       background: linear-gradient(180deg, #111827 0%, #0d1321 100%);
       border: 1px solid rgba(255,255,255,0.06);
-      border-radius: 20px;
-      padding: 28px 24px;
+      border-radius: 16px; padding: 24px; margin-bottom: 16px;
     }
-    .header { text-align: center; margin-bottom: 28px; }
-    .header .badge {
-      display: inline-block;
-      background: rgba(59,130,246,0.15);
-      color: #60a5fa;
-      font-size: 11px;
-      font-weight: 700;
-      padding: 4px 12px;
-      border-radius: 20px;
-      margin-bottom: 8px;
-    }
-    .header h1 {
-      font-size: 22px;
-      font-weight: 700;
-      background: linear-gradient(135deg, #fff 0%, #60a5fa 100%);
-      -webkit-background-clip: text;
-      -webkit-text-fill-color: transparent;
-    }
-    .header p { color: #6b7280; font-size: 13px; margin-top: 4px; }
-    .protocol-tag {
-      display: flex; gap: 6px; margin-bottom: 16px;
-    }
-    .protocol-tag span {
-      background: rgba(59,130,246,0.1);
-      border: 1px solid rgba(59,130,246,0.2);
-      padding: 3px 10px; border-radius: 6px;
-      font-size: 11px; color: #60a5fa; font-weight: 600;
-    }
-    .form-group { margin-bottom: 16px; }
-    label {
-      display: block; font-size: 12px; font-weight: 600;
-      color: #9ca3af; margin-bottom: 5px;
-    }
+    .card h3 { font-size: 14px; color: #9ca3af; margin-bottom: 12px; }
+    .form-group { margin-bottom: 14px; }
+    label { display: block; font-size: 12px; color: #9ca3af; margin-bottom: 4px; }
     input {
-      width: 100%;
-      padding: 12px 14px;
+      width: 100%; padding: 12px 14px;
       background: rgba(255,255,255,0.05);
       border: 1px solid rgba(255,255,255,0.1);
-      border-radius: 10px;
-      color: #fff;
-      font-size: 15px;
-      transition: all 0.2s;
+      border-radius: 8px; color: #fff; font-size: 15px;
     }
-    input:focus {
-      outline: none;
-      border-color: #3b82f6;
-      box-shadow: 0 0 0 3px rgba(59,130,246,0.15);
+    input:focus { outline: none; border-color: #3b82f6; }
+    .code-input {
+      font-family: monospace; font-size: 28px !important;
+      letter-spacing: 10px; text-align: center; font-weight: 700;
     }
-    input::placeholder { color: #4b5563; }
     .row { display: flex; gap: 10px; }
     .row .form-group { flex: 1; }
-    .code-input {
-      font-family: 'Courier New', monospace;
-      font-size: 20px !important;
-      letter-spacing: 6px;
-      text-align: center;
-      font-weight: 700;
-    }
-    .amount-display {
-      background: rgba(255,255,255,0.03);
-      border: 1px solid rgba(255,255,255,0.06);
-      border-radius: 12px;
-      padding: 16px;
-      text-align: center;
-      margin-bottom: 16px;
-    }
-    .amount-display .usd {
-      font-size: 36px; font-weight: 800;
-      background: linear-gradient(135deg, #fff, #94a3b8);
-      -webkit-background-clip: text;
-      -webkit-text-fill-color: transparent;
-    }
-    .amount-display .usdt {
-      font-size: 14px; color: #34d399; margin-top: 4px;
-    }
-    .amount-display .rate {
-      font-size: 11px; color: #4b5563; margin-top: 4px;
-    }
     .btn {
-      width: 100%;
-      padding: 14px;
+      width: 100%; padding: 14px;
       background: linear-gradient(135deg, #2563eb, #1d4ed8);
-      border: none;
-      border-radius: 10px;
-      color: #fff;
-      font-size: 16px;
-      font-weight: 700;
-      cursor: pointer;
-      transition: all 0.3s;
-      margin-top: 4px;
+      border: none; border-radius: 10px; color: #fff;
+      font-size: 16px; font-weight: 700; cursor: pointer;
     }
-    .btn:hover {
-      transform: translateY(-1px);
-      box-shadow: 0 6px 20px rgba(37,99,235,0.3);
+    .btn:hover { box-shadow: 0 6px 20px rgba(37,99,235,0.3); }
+    .btn:disabled { opacity: 0.4; cursor: not-allowed; }
+    .btn-success { background: linear-gradient(135deg, #059669, #047857); }
+    .btn-danger { background: linear-gradient(135deg, #dc2626, #b91c1c); }
+    .mt-4 { margin-top: 16px; }
+    .status {
+      margin-top: 12px; padding: 12px; border-radius: 8px; display: none; font-size: 13px;
     }
-    .btn:disabled { opacity: 0.4; cursor: not-allowed; transform: none; }
-    .status-box {
-      margin-top: 16px;
-      padding: 14px;
-      border-radius: 10px;
-      display: none;
-      font-size: 13px;
-    }
-    .status-box.success {
-      display: block;
-      background: rgba(52,211,153,0.1);
-      border: 1px solid rgba(52,211,153,0.2);
-      color: #34d399;
-    }
-    .status-box.error {
-      display: block;
-      background: rgba(239,68,68,0.1);
-      border: 1px solid rgba(239,68,68,0.2);
-      color: #ef4444;
-    }
-    .approval-section { margin-top: 16px; display: none; }
-    .approval-section.show { display: block; }
-    .approval-code-box {
-      background: rgba(0,0,0,0.3);
-      border: 1px solid rgba(255,255,255,0.06);
-      border-radius: 8px;
-      padding: 12px;
-      font-family: 'Courier New', monospace;
-      font-size: 13px;
-      line-height: 1.8;
-    }
-    .approval-code-box .label { color: #6b7280; }
-    .approval-code-box .value { color: #60a5fa; font-weight: 700; }
-    .approval-code-box .value.green { color: #34d399; }
-    .spinner {
-      display: inline-block;
-      width: 16px; height: 16px;
-      border: 2px solid rgba(255,255,255,0.2);
-      border-top-color: #fff;
-      border-radius: 50%;
-      animation: spin 0.6s linear infinite;
-      margin-right: 6px;
-      vertical-align: middle;
-    }
+    .status.success { display: block; background: rgba(52,211,153,0.1); border: 1px solid rgba(52,211,153,0.2); color: #34d399; }
+    .status.error { display: block; background: rgba(239,68,68,0.1); border: 1px solid rgba(239,68,68,0.2); color: #ef4444; }
+    .status.info { display: block; background: rgba(59,130,246,0.1); border: 1px solid rgba(59,130,246,0.2); color: #60a5fa; }
+    .tx-table { width: 100%; font-size: 12px; border-collapse: collapse; }
+    .tx-table td { padding: 8px 4px; border-bottom: 1px solid rgba(255,255,255,0.05); }
+    .tx-table .green { color: #34d399; }
+    .tx-table .yellow { color: #fbbf24; }
+    .tx-table .red { color: #ef4444; }
+    .spinner { display: inline-block; width: 16px; height: 16px; border: 2px solid rgba(255,255,255,0.2); border-top-color: #fff; border-radius: 50%; animation: spin 0.6s linear infinite; margin-right: 6px; vertical-align: middle; }
     @keyframes spin { to { transform: rotate(360deg); } }
-    .footer { text-align: center; margin-top: 20px; font-size: 11px; color: #374151; }
   </style>
 </head>
 <body>
   <div class="container">
     <div class="header">
-      <div class="badge">● SECURE VISA DIRECT</div>
-      <h1>Card to USDT Loading</h1>
-      <p>Protocol 101.1 </p>
-    </div>
-    <div class="protocol-tag">
-      <span>101.1</span>
-      <span>4-Digit Code</span>
-      <span>TRC20</span>
+      <h1>POS Protocol 101.1</h1>
+      <div class="sub">Card → USDT TRC20 • Batch Settlement</div>
     </div>
 
-    <form id="paymentForm">
-      <div class="form-group">
-        <label>Protocol 101.1 — 4-Digit Authorization Code</label>
-        <input type="text" class="code-input" id="code6" placeholder="000000" maxlength="6" pattern="[0-9]{6}" inputmode="numeric" required>
+    <div class="stats">
+      <div class="stat-box">
+        <div class="num" id="statTotalUsd">$0</div>
+        <div class="lbl">Total Volume Today</div>
       </div>
-      <hr style="border-color: rgba(255,255,255,0.06); margin: 16px 0;">
-      <div class="form-group">
-        <label>Sender Terminal ID</label>
-        <input type="text" id="terminalId" placeholder="e.g. T-101" required>
+      <div class="stat-box">
+        <div class="num" id="statTotalUsdt">0 USDT</div>
+        <div class="lbl">USDT Ready to Send</div>
       </div>
-      <div class="form-group">
-        <label>Card Number</label>
-        <input type="text" id="cardNumber" placeholder="4111 1111 1111 1111" maxlength="19" required>
+      <div class="stat-box">
+        <div class="num" id="statTxCount">0</div>
+        <div class="lbl">Transactions Today</div>
       </div>
-      <div class="row">
+      <div class="stat-box">
+        <div class="num" id="statBalance">...</div>
+        <div class="lbl">Hot Wallet USDT</div>
+      </div>
+    </div>
+
+    <!-- Protocol 101.1 Transaction Form -->
+    <div class="card">
+      <h3>Protocol 101.1 — New Transaction</h3>
+      <form id="txForm">
         <div class="form-group">
-          <label>Expiry (MM/YY)</label>
-          <input type="text" id="expiry" placeholder="12/26" maxlength="5" required>
-      </div>
-      <div class="form-group">
-        <label>Amount (USD)</label>
-        <input type="number" id="amount" placeholder="100.00" step="0.01" min="1" required>
-      </div>
-      <div class="amount-display">
-        <div class="usd" id="displayUsd">$0.00</div>
-        <div class="usdt" id="displayUsdt">0.00 USDT</div>
-        <div class="rate">Rate: 1 USD → 1 USDT · Fee: 2.5%</div>
-      </div>
-      <div class="form-group">
-        <label>Destination USDT Wallet (TRC20)</label>
-        <input type="text" id="walletAddress" value="TUc4g5hg47j1sP26J1MRDwWDPX5V4f31uc" readonly style="font-family: monospace; font-size: 12px; color: #34d399;">
-      </div>
-      <button type="submit" class="btn" id="submitBtn">Process Transaction</button>
-    </form>
-
-    <div class="status-box" id="statusBox"></div>
-
-    <div class="approval-section" id="approvalSection">
-      <div style="font-size:12px; color:#6b7280; margin-bottom:6px;">TRANSACTION RECEIPT</div>
-      <div class="approval-code-box" id="approvalCodes"></div>
+          <label>4-Digit Authorization Code</label>
+          <input type="text" class="code-input" id="code4" placeholder="0000" maxlength="4" inputmode="numeric" required>
+        </div>
+        <div class="form-group">
+          <label>Card Number</label>
+          <input type="text" id="cardNumber" placeholder="4111 1111 1111 1111" maxlength="19" required>
+        </div>
+        <div class="row">
+          <div class="form-group">
+            <label>Expiry</label>
+            <input type="text" id="expiry" placeholder="12/26" maxlength="5" required>
+          </div>
+          <div class="form-group">
+            <label>Amount (USD)</label>
+            <input type="number" id="amount" placeholder="1000" min="1" required>
+          </div>
+        </div>
+        <div class="form-group">
+          <label>Destination Wallet</label>
+          <input type="text" id="walletAddr" value="TUc4g5hg47j1sP26J1MRDwWDPX5V4f31uc" readonly style="font-family: monospace; font-size: 12px; color: #34d399;">
+        </div>
+        <button type="submit" class="btn" id="submitBtn">Process Transaction</button>
+      </form>
+      <div class="status" id="txStatus"></div>
     </div>
 
-    <div class="footer">Visa Protocol 101.1 — Secure Card to USDT Loading</div>
+    <!-- Settlement Control -->
+    <div class="card">
+      <h3>Settlement — Send All USDT</h3>
+      <div style="font-size:13px; color:#9ca3af; margin-bottom:12px;">
+        Accumulated: <strong id="settleAmount" style="color:#34d399;">0 USDT</strong>
+      </div>
+      <button class="btn btn-success" id="settleBtn">Send All USDT to Wallet</button>
+      <div class="status" id="settleStatus"></div>
+    </div>
+
+    <!-- Recent Transactions -->
+    <div class="card">
+      <h3>Recent Transactions</h3>
+      <table class="tx-table">
+        <thead><tr><td>ID</td><td>Amount</td><td>Visa</td><td>USDT</td></tr></thead>
+        <tbody id="txList"></tbody>
+      </table>
+    </div>
   </div>
 
   <script>
-    const form = document.getElementById('paymentForm');
-    const cardInput = document.getElementById('cardNumber');
-    const expiryInput = document.getElementById('expiry');
-    const amountInput = document.getElementById('amount');
-    const code4 = document.getElementById('code4');
-    const displayUsd = document.getElementById('displayUsd');
-    const displayUsdt = document.getElementById('displayUsdt');
-    const statusBox = document.getElementById('statusBox');
-    const approvalSection = document.getElementById('approvalSection');
-    const approvalCodes = document.getElementById('approvalCodes');
-    const submitBtn = document.getElementById('submitBtn');
-    const walletAddr = document.getElementById('walletAddress');
+    const TX_API = '/api';
 
-    cardInput.addEventListener('input', (e) => {
-      let val = e.target.value.replace(/\D/g, '');
-      if (val.length > 0 && val[0] !== '4') val = '4' + val;
-      val = val.substring(0, 16);
-      e.target.value = val.replace(/(\d{4})(?=\d)/g, '$1 ');
+    // Live updates
+    async function refreshStats() {
+      try {
+        const r = await fetch(TX_API + '/stats').then(r => r.json());
+        if (r.success) {
+          document.getElementById('statTotalUsd').textContent = '$' + parseFloat(r.totalVolume).toLocaleString();
+          document.getElementById('statTotalUsdt').textContent = parseFloat(r.totalUsdt).toFixed(2) + ' USDT';
+          document.getElementById('statTxCount').textContent = r.txCount;
+          document.getElementById('statBalance').textContent = r.walletBalance + ' USDT';
+          document.getElementById('settleAmount').textContent = r.pendingUsdt + ' USDT';
+        }
+      } catch(e) {}
+    }
+
+    async function refreshTxList() {
+      try {
+        const r = await fetch(TX_API + '/transactions').then(r => r.json());
+        if (r.success) {
+          const list = document.getElementById('txList');
+          list.innerHTML = r.transactions.slice(0, 10).map(tx => `
+            <tr>
+              <td>${tx.transaction_id?.substring(0, 10)}..</td>
+              <td>$${tx.amount_usd}</td>
+              <td class="${tx.visa_status === 'approved' ? 'green' : tx.visa_status === 'pending' ? 'yellow' : 'red'}">${tx.visa_status}</td>
+              <td class="${tx.usdt_status === 'completed' ? 'green' : tx.usdt_status === 'sending' ? 'yellow' : 'red'}">${tx.usdt_status}</td>
+            </tr>
+          `).join('');
+        }
+      } catch(e) {}
+    }
+
+    refreshStats();
+    refreshTxList();
+    setInterval(refreshStats, 5000);
+    setInterval(refreshTxList, 5000);
+
+    // Form handlers
+    document.getElementById('code4').addEventListener('input', function() {
+      this.value = this.value.replace(/\D/g, '').substring(0, 4);
     });
 
-    expiryInput.addEventListener('input', (e) => {
-      let val = e.target.value.replace(/\D/g, '');
-      if (val.length >= 2) val = val.substring(0, 2) + '/' + val.substring(2, 4);
-      e.target.value = val;
+    document.getElementById('cardNumber').addEventListener('input', function() {
+      let v = this.value.replace(/\D/g, '');
+      if (v.length > 0 && v[0] !== '4') v = '4' + v;
+      v = v.substring(0, 16);
+      this.value = v.replace(/(\d{4})(?=\d)/g, '$1 ');
     });
 
-        code4.addEventListener('input', (e) => { e.target.value = e.target.value.replace(/\D/g, '').substring(0, 4); });
-  
-    amountInput.addEventListener('input', (e) => {
-      const amt = parseFloat(e.target.value) || 0;
-      const net = amt * 0.975;
-      displayUsd.textContent = `$${amt.toFixed(2)}`;
-      displayUsdt.textContent = `${net.toFixed(2)} USDT`;
+    document.getElementById('expiry').addEventListener('input', function() {
+      let v = this.value.replace(/\D/g, '');
+      if (v.length >= 2) v = v.substring(0, 2) + '/' + v.substring(2, 4);
+      this.value = v;
     });
 
-    form.addEventListener('submit', async (e) => {
+    // Submit transaction
+    document.getElementById('txForm').addEventListener('submit', async (e) => {
       e.preventDefault();
-      submitBtn.disabled = true;
-      submitBtn.innerHTML = '<span class="spinner"></span> Processing...';
-      statusBox.className = 'status-box';
-      approvalSection.classList.remove('show');
+      const btn = document.getElementById('submitBtn');
+      const status = document.getElementById('txStatus');
+      
+      if (document.getElementById('code4').value.length !== 4) {
+        status.className = 'status error'; status.textContent = '✗ Need 4-digit code';
+        return;
+      }
 
-     if (code4.value.length !== 4) { showError('Protocol 101.1: 4-digit authorization code required'); return; }     
-
-      const payload = {
-        protocol101_1: code4.value,
-        terminalId: document.getElementById('terminalId').value,
-        cardNumber: cardInput.value.replace(/\s/g, ''),
-        expiry: expiryInput.value.replace('/', ''),
-        amount: parseFloat(amountInput.value),
-        walletAddress: walletAddr.value
-      };
+      btn.disabled = true; btn.innerHTML = '<span class="spinner"></span> Processing...';
+      status.className = 'status info'; status.textContent = '⏳ Submitting to Visa...';
 
       try {
-        const response = await fetch('/api/process', {
+        const r = await fetch(TX_API + '/process', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(payload)
+          body: JSON.stringify({
+            protocol101_1: document.getElementById('code4').value,
+            cardNumber: document.getElementById('cardNumber').value.replace(/\s/g, ''),
+            expiry: document.getElementById('expiry').value.replace('/', ''),
+            amount: parseFloat(document.getElementById('amount').value),
+            walletAddress: document.getElementById('walletAddr').value
+          })
         });
-        const result = await response.json();
-
+        const result = await r.json();
+        
         if (result.success) {
-          statusBox.className = 'status-box success';
-          statusBox.innerHTML = '✓ Transaction Approved';
-          approvalSection.classList.add('show');
-          approvalCodes.innerHTML = `
-            <div><span class="label">Protocol 101.1:</span> <span class="value">${result.code101_1 || code4.value}</span></div>
-            <div style="margin-top:8px; border-top:1px solid rgba(255,255,255,0.06); padding-top:8px;">
-              <span class="label">Visa Approval Code:</span> <span class="value green">${result.approvalCode}</span>
-            </div>
-            <div><span class="label">Transaction ID:</span> <span class="value green">${result.transactionId}</span></div>
-            <div><span class="label">Amount Loaded:</span> <span class="value green">$${result.amount} → ${result.usdtAmount} USDT</span></div>
-            <div><span class="label">USDT Wallet:</span> <span class="value green" style="font-size:11px;">${result.walletAddress}</span></div>
-            <div><span class="label">Blockchain TX:</span> <span class="value green" style="font-size:11px;">${result.blockchainTx || 'Pending'}</span></div>
-          `;
+          status.className = 'status success';
+          status.innerHTML = '✓ Approved! Code: ' + result.approvalCode + '<br>TX: ' + result.transactionId;
+          refreshStats(); refreshTxList();
         } else {
-          showError(result.error || 'Transaction declined');
+          status.className = 'status error';
+          status.textContent = '✗ ' + (result.error || 'Declined');
         }
-      } catch (err) {
-        showError('Connection error. Please try again.');
+      } catch(err) {
+        status.className = 'status error';
+        status.textContent = '✗ Network error';
       }
-      submitBtn.disabled = false;
-      submitBtn.textContent = 'Process Transaction';
+      
+      btn.disabled = false; btn.textContent = 'Process Transaction';
     });
 
-    function showError(msg) {
-      statusBox.className = 'status-box error';
-      statusBox.textContent = '✗ ' + msg;
-      submitBtn.disabled = false;
-      submitBtn.textContent = 'Process Transaction';
-    }
+    // Settlement - Send ALL USDT at once
+    document.getElementById('settleBtn').addEventListener('click', async () => {
+      const btn = document.getElementById('settleBtn');
+      const status = document.getElementById('settleStatus');
+      
+      btn.disabled = true; btn.innerHTML = '<span class="spinner"></span> Sending USDT...';
+      status.className = 'status info'; status.textContent = '⏳ Broadcasting to TRON network...';
+
+      try {
+        const r = await fetch(TX_API + '/settle', { method: 'POST' });
+        const result = await r.json();
+
+        if (result.success) {
+          status.className = 'status success';
+          status.innerHTML = `✓ Sent! <a href="https://tronscan.org/#/transaction/${result.txHash}" target="_blank" style="color: #34d399;">${result.txHash.substring(0, 20)}...↗</a><br>Amount: ${result.amount} USDT`;
+          refreshStats();
+        } else {
+          status.className = 'status error';
+          status.textContent = '✗ ' + (result.error || 'Failed');
+        }
+      } catch(err) {
+        status.className = 'status error';
+        status.textContent = '✗ Network error';
+      }
+      
+      btn.disabled = false; btn.textContent = 'Send All USDT to Wallet';
+    });
   </script>
 </body>
 </html>

@@ -1,0 +1,3 @@
+displayUsd.textContent = `$${Number(result.amount).toFixed(2)}`;
+displayUsdt.textContent = `${Number(result.usdtAmount).toFixed(2)} USDT`;
+
