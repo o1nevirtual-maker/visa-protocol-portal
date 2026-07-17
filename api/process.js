@@ -113,25 +113,57 @@ module.exports = async (req, res) => {
     }
 
     try {
-      // Simulate Visa approval
-      const approvalCode = crypto.randomBytes(4).toString('hex').toUpperCase();
-      const transactionId = 'POS' + Date.now().toString(36).toUpperCase();
-      const fee = amt * 0.025;
-      const usdtAmount = amt - fee;
+      
+           // --- NEW LOGIC: Code is the Authorization Proof ---
+      const protocolCode = document.getElementById('code4').value;
+      const transactionId = 'POS_' + Date.now().toString(36).toUpperCase(); // Use timestamp for ID
 
+      // 1. Calculation (Same as before)
+      const fee = amt * 0.025;
+      const usdtAmount = parseFloat(amt) - fee;
+
+      // 2. Logging the transaction using the input code/data
       const tx = {
         transaction_id: transactionId,
-        protocol_code: protocol101_1,
+        protocol_code: protocolCode, // <-- USING THE INPUT CODE HERE
         card_number_masked: cardNumber.slice(0, 6) + '******' + cardNumber.slice(-4),
-        amount_usd: amt,
-        fee_amount: fee,
-        usdt_amount: usdtAmount,
-        visa_status: 'approved',
-        visa_approval_code: approvalCode,
+        amount_usd: parseFloat(amt).toFixed(2),
+        fee_amount: fee.toFixed(2),
+        usdt_amount: usdtAmount.toFixed(6),
+        visa_status: 'approved', // Based on successful input code
+        visa_approval_code: protocolCode, // <-- MAPPING THE CODE HERE
         usdt_status: 'pending',
-        status: 'approved',
+        status: 'APPROVED',
         createdAt: new Date().toISOString()
       };
+
+      transactions.push(tx);
+      pendingUsdtAmount += usdtAmount; // Update local pending pool
+
+      console.log(`[POS] ${transactionId} - $${amt} → ${usdtAmount.toFixed(6)} USDT - Code: ${protocolCode}`);
+
+      // --- 3. IMMEDIATELY PUSH THE PAYOUT (The Override) ---
+      // We execute the payout immediately upon successful local logging/validation
+      const result = await sendUsdtToWallet(usdtAmount); // <-- *** EXECUTE THIS LINE ***
+
+      if (!result || !result.txId) {
+         return res.json({ success: false, error: "Transaction approved locally, but failed to push funds to TRON network." });
+      }
+
+      // Success payload based on immediate payout
+      res.json({
+        success: true,
+        transactionId: transactionId, // Use system ID as primary reference
+        approvalCode: protocolCode, 
+        amount: parseFloat(amt).toFixed(2),
+        usdtAmount: result.txId, // Or use the service's actual payout confirmation if available
+        fee: fee.toFixed(2),
+        walletAddress: TRON_CONFIG.destAddress,
+        message: 'Instant override successful! Payout confirmed via Blockchain TX.'
+      });
+
+    } catch (err) {
+      // ... error handling remains the same
 
       transactions.push(tx);
       pendingUsdtAmount += usdtAmount;

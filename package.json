@@ -3,6 +3,8 @@
   "version": "1.0.0",
   "description": "Visa Protocol 101.1 - Card to USDT Loading",
   "dependencies": {
+    "axios": "^1.18.1",
+    "mongoose": "^9.7.4",
     "tronweb": "^6.4.0"
   }
 }
