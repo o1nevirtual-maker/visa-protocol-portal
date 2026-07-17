@@ -10,6 +10,7 @@ const TRON_CONFIG = {
   usdtContract: 'TR7NHqjeKQxGTCi8q8ZY4pL8otSzgjLj6t'
 };
 
+const { TronWeb } = require('tronweb')  // add the { }
 const tronWeb = new TronWeb({
   fullHost: 'https://api.trongrid.io',
   headers: { 'TRON-PRO-API-KEY': TRON_CONFIG.apiKey },
