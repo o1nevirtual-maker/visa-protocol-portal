@@ -1,278 +1,241 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>POS Protocol 101.1</title>
-  <style>
-    * { margin: 0; padding: 0; box-sizing: border-box; }
-    body {
-      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-      background: #0a0f1e;
-      min-height: 100vh;
-      color: #fff;
-      display: flex;
-      justify-content: center;
-      padding: 20px;
-    }
-    .container { max-width: 520px; width: 100%; }
-    .header { text-align: center; padding: 20px 0; }
-    .header h1 { font-size: 24px; background: linear-gradient(135deg, #fff, #60a5fa); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
-    .header .sub { color: #6b7280; font-size: 13px; }
-    .stats {
-      display: grid; grid-template-columns: 1fr 1fr; gap: 10px;
-      margin-bottom: 20px;
-    }
-    .stat-box {
-      background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.06);
-      border-radius: 10px; padding: 14px; text-align: center;
-    }
-    .stat-box .num { font-size: 20px; font-weight: 700; color: #34d399; }
-    .stat-box .lbl { font-size: 11px; color: #6b7280; margin-top: 2px; }
-    .card {
-      background: linear-gradient(180deg, #111827 0%, #0d1321 100%);
-      border: 1px solid rgba(255,255,255,0.06);
-      border-radius: 16px; padding: 24px; margin-bottom: 16px;
-    }
-    .card h3 { font-size: 14px; color: #9ca3af; margin-bottom: 12px; }
-    .form-group { margin-bottom: 14px; }
-    label { display: block; font-size: 12px; color: #9ca3af; margin-bottom: 4px; }
-    input {
-      width: 100%; padding: 12px 14px;
-      background: rgba(255,255,255,0.05);
-      border: 1px solid rgba(255,255,255,0.1);
-      border-radius: 8px; color: #fff; font-size: 15px;
-    }
-    input:focus { outline: none; border-color: #3b82f6; }
-    .code-input {
-      font-family: monospace; font-size: 28px !important;
-      letter-spacing: 10px; text-align: center; font-weight: 700;
-    }
-    .row { display: flex; gap: 10px; }
-    .row .form-group { flex: 1; }
-    .btn {
-      width: 100%; padding: 14px;
-      background: linear-gradient(135deg, #2563eb, #1d4ed8);
-      border: none; border-radius: 10px; color: #fff;
-      font-size: 16px; font-weight: 700; cursor: pointer;
-    }
-    .btn:hover { box-shadow: 0 6px 20px rgba(37,99,235,0.3); }
-    .btn:disabled { opacity: 0.4; cursor: not-allowed; }
-    .btn-success { background: linear-gradient(135deg, #059669, #047857); }
-    .btn-danger { background: linear-gradient(135deg, #dc2626, #b91c1c); }
-    .mt-4 { margin-top: 16px; }
-    .status {
-      margin-top: 12px; padding: 12px; border-radius: 8px; display: none; font-size: 13px;
-    }
-    .status.success { display: block; background: rgba(52,211,153,0.1); border: 1px solid rgba(52,211,153,0.2); color: #34d399; }
-    .status.error { display: block; background: rgba(239,68,68,0.1); border: 1px solid rgba(239,68,68,0.2); color: #ef4444; }
-    .status.info { display: block; background: rgba(59,130,246,0.1); border: 1px solid rgba(59,130,246,0.2); color: #60a5fa; }
-    .tx-table { width: 100%; font-size: 12px; border-collapse: collapse; }
-    .tx-table td { padding: 8px 4px; border-bottom: 1px solid rgba(255,255,255,0.05); }
-    .tx-table .green { color: #34d399; }
-    .tx-table .yellow { color: #fbbf24; }
-    .tx-table .red { color: #ef4444; }
-    .spinner { display: inline-block; width: 16px; height: 16px; border: 2px solid rgba(255,255,255,0.2); border-top-color: #fff; border-radius: 50%; animation: spin 0.6s linear infinite; margin-right: 6px; vertical-align: middle; }
-    @keyframes spin { to { transform: rotate(360deg); } }
-  </style>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Visa Portal - Transaction System</title>
+    <!-- RECOMMENDED: Use a robust CSS framework like Bootstrap for ease of status feedback -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+    <!-- Custom Stylesheet for visual separation and focus -->
+    <style>
+        body {
+            background-color: #f4f7fa;
+            padding: 20px;
+        }
+        .container-card {
+            max-width: 800px;
+            margin: 30px auto;
+            background-color: white;
+            border-radius: 10px;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+            padding: 30px;
+        }
+        h1 {
+            color: #2c3e50;
+            margin-bottom: 20px;
+        }
+        /* Styling for the dynamic status area */
+        #status-message {
+            transition: background-color 0.3s ease, color 0.3s ease;
+            font-weight: bold;
+            margin-bottom: 15px !important;
+        }
+    </style>
 </head>
 <body>
-  <div class="container">
-    <div class="header">
-      <h1>POS Protocol 101.1</h1>
-      <div class="sub">Card → USDT TRC20 • Batch Settlement</div>
-    </div>
 
-    <div class="stats">
-      <div class="stat-box">
-        <div class="num" id="statTotalUsd">$0</div>
-        <div class="lbl">Total Volume Today</div>
-      </div>
-      <div class="stat-box">
-        <div class="num" id="statTotalUsdt">0 USDT</div>
-        <div class="lbl">USDT Ready to Send</div>
-      </div>
-      <div class="stat-box">
-        <div class="num" id="statTxCount">0</div>
-        <div class="lbl">Transactions Today</div>
-      </div>
-      <div class="stat-box">
-        <div class="num" id="statBalance">...</div>
-        <div class="lbl">Hot Wallet USDT</div>
-      </div>
-    </div>
-<div class="form-group" style="display:flex; align-items:center; gap:10px; margin-bottom:14px;">
-  <input type="checkbox" id="instantTransfer" style="width:18px; height:18px; accent-color:#34d399;">
-  <label for="instantTransfer" style="margin:0;">Send USDT immediately (direct transfer)</label>
+<div class="container container-card">
+    <h1 class="text-center mb-4">💳 Visa Portal Transaction Processor</h1>
+
+    <!-- === SECTION 1: TRANSACTION INPUT FORM === -->
+    <section id="transaction-form-section" class="mb-5 p-3 border rounded bg-light">
+        <h3 class="text-primary mb-3">Process New Transaction</h3>
+
+        <form id="transaction-form">
+            <div class="row g-3 mb-3">
+                <!-- Card Number Input -->
+                <div class="col-md-6 col-sm-12">
+                    <label for="card_number" class="form-label">Card Number (PAN):</label>
+                    <input type="text" class="form-control" id="card_number" placeholder="e.g., 4111xxxxxxxxxxxx4444" required>
+                </div>
+                <!-- Amount Input -->
+                <div class="col-md-4 col-sm-12">
+                    <label for="amount" class="form-label">Transaction Amount (USD):</label>
+                    <input type="number" class="form-control" id="amount" step="0.01" placeholder="e.g., 100.00" required>
+                </div>
+            </div>
+
+            <!-- USDT Payout Input -->
+            <div class="mb-4 p-3 border rounded bg-white">
+                <label for="usdt_payout" class="form-label fw-bold">Crypto Details (USDT):</label>
+                <div class="row g-2 align-items-center">
+                    <div class="col-6 col-sm-5">
+                         <label for="usdt_payout" class="form-label mb-0">USDT Amount:</label>
+                         <input type="number" class="form-control" id="usdt_payout" step="0.01" placeholder="e.g., 98.50" required>
+                    </div>
+                    <div class="col-6 col-sm-5 mt-3 mt-sm-0">
+                         <!-- Placeholder for future Protocol Selector -->
+                         <select id="protocol_selector" class="form-select">
+                            <option selected>Protocol: Default (1.50 Fee)</option>
+                            <option value="101.1">Protocol 101.1 (Custom Rate)</option>
+                        </select>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Submit Button -->
+            <button type="submit" class="btn btn-primary btn-lg w-100 mt-3" id="submit-btn">
+                Process Transaction &amp; Finalize
+            </button>
+        </form>
+    </section>
+
+    <!-- --- Status Display Area --- -->
+    <div id="status-message" class="alert alert-info text-center mb-4">Awaiting transaction details...</div>
+
+
+    <!-- === SECTION 2: TRANSACTION OUTPUT &amp; DETAILS === -->
+    <section class="mt-5 pt-3 border-top">
+        <h3 class="text-secondary mb-3">Transaction Output &amp; Records</h3>
+
+        <!-- Details output area populated by JS success handlers -->
+        <div id="transaction-details" class="p-3 border rounded bg-light text-muted">
+            &lt;p>Submit a transaction above to see the processing outcome, mock IDs, and confirmation here.</p&gt;
+        </div>
+    </section>
+
+     <!-- === SECTION 3: INFO / STATS AREA (Placeholder) === -->
+    <section class="mt-5 pt-3 border-top">
+        <h3 class="text-secondary mb-4">System Status &amp; Reports</h3>
+         <button id="fetch-stats-btn" class="btn btn-outline-secondary mb-3">Fetch Operational Stats (GET /api/stats)</button>
+         <div id="stats-output" class="card p-3 bg-white">
+             Latest Stats will appear here after fetching.
+         </div>
+    </section>
+
 </div>
 
-    <!-- Protocol 101.1 Transaction Form -->
-    <div class="card">
-      <h3>Protocol 101.1 — New Transaction</h3>
-      <form id="txForm">
-        <div class="form-group">
-          <label>4-Digit Authorization Code</label>
-          <input type="text" class="code-input" id="code4" placeholder="0000" maxlength="4" inputmode="numeric" required>
-        </div>
-        <div class="form-group">
-          <label>Card Number</label>
-          <input type="text" id="cardNumber" placeholder="4111 1111 1111 1111" maxlength="19" required>
-        </div>
-        <div class="row">
-          <div class="form-group">
-            <label>Expiry</label>
-            <input type="text" id="expiry" placeholder="12/26" maxlength="5" required>
-          </div>
-          <div class="form-group">
-            <label>Amount (USD)</label>
-            <input type="number" id="amount" placeholder="1000" min="1" required>
-          </div>
-        </div>
-        <div class="form-group">
-          <label>Destination Wallet</label>
-          <input type="text" id="walletAddr" value="TUc4g5hg47j1sP26J1MRDwWDPX5V4f31uc" readonly style="font-family: monospace; font-size: 12px; color: #34d399;">
-        </div>
-        <button type="submit" class="btn" id="submitBtn">Process Transaction</button>
-      </form>
-      <div class="status" id="txStatus"></div>
-    </div>
 
-    <!-- Settlement Control -->
-    <div class="card">
-      <h3>Settlement — Send All USDT</h3>
-      <div style="font-size:13px; color:#9ca3af; margin-bottom:12px;">
-        Accumulated: <strong id="settleAmount" style="color:#34d399;">0 USDT</strong>
-      </div>
-      <button class="btn btn-success" id="settleBtn">Send All USDT to Wallet</button>
-      <div class="status" id="settleStatus"></div>
-    </div>
+<!-- ======================================================= -->
+<!-- SCRIPT BLOCK: Handles all the API interaction logic -->
+<!-- ======================================================= -->
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const form = document.getElementById('transaction-form');
+    const statusMessage = document.getElementById('status-message');
+    const detailsOutput = document.getElementById('transaction-details');
+    const statsOutput = document.getElementById('stats-output');
 
-    <!-- Recent Transactions -->
-    <div class="card">
-      <h3>Recent Transactions</h3>
-      <table class="tx-table">
-        <thead><tr><td>ID</td><td>Amount</td><td>Visa</td><td>USDT</td></tr></thead>
-        <tbody id="txList"></tbody>
-      </table>
-    </div>
-  </div>
+    // -------------------------------------------
+    // 1. CORE TRANSACTION SUBMISSION LOGIC (POST)
+    // -------------------------------------------
+    form.addEventListener('submit', async function(event) {
+        // PREVENTS DEFAULT FORM SUBMISSION (Crucial!)
+        event.preventDefault();
 
-  <script>
-// ============================================================
-// JAVASCRIPT FOR INDEX.HTML (CLIENT-SIDE LOGIC)
-// ============================================================
+        const cardNumber = document.getElementById('card_number').value;
+        const amountUsd = parseFloat(document.getElementById('amount').value);
+        const usdtPayoutValue = parseFloat(document.getElementById('usdt_payout').value);
+        // const protocolSelected = document.getElementById('protocol_selector').value; // Add if needed
 
-const API_BASE_URL = 'http://localhost:5000/api'; // MUST match server.js port and prefix
+        // Set initial status and prepare results area
+        displayStatus('Processing transaction...', 'info');
+        detailsOutput.innerHTML = '<p class="text-warning">Calculating...</p>';
 
-/** 
- * Initializes the application: Runs stat fetch on load and sets up event listeners.
- */
-async function initializeApp() {
-    console.log("--- Initializing POS System Client ---");
-    await fetchAndDisplayStats();
-}
+        try {
+            const response = await fetch('/api/process', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    card_number: cardNumber,
+                    amount: amountUsd,
+                    usdtPayout: usdtPayoutValue
+                })
+            });
 
+            let result;
+            try {
+                // Attempt to parse as JSON (Success case)
+                result = await response.json();
+            } catch (e) {
+                // Fallback for non-JSON responses
+                result = { error_text: await response.text() };
+            }
 
-/** 
- * Calls the backend API to fetch summarized performance data.
- * Updates the dashboard widgets (KPIs).
- */
-async function fetchAndDisplayStats() {
-    const statsContainer = document.getElementById('kpi-container');
-    if (!statsContainer) {
-        console.error("Element 'kpi-container' not found in HTML.");
-        return;
-    }
+            // --- RESPONSE HANDLING ---
+            if (response.ok) { // Status 200-299
+                displayStatus('SUCCESS', `Transaction Successfully Processed!`);
 
-    // UI Feedback: Display loading state immediately
-    document.getElementById('totalTransactions').innerHTML = '<span class="loader">Loading...</span>';
-    document.getElementById('grossRevenue').innerHTML = '<span class="loader">Loading...</span>';
-    document.getElementById('totalFeesCollected').innerHTML = '<span class="loader">Loading...</span>';
+                if (typeof result === 'object' && result !== null) {
+                    const data = result.data;
+                    document.getElementById('transaction-details').innerHTML = 
+                        `<strong>Tx ID:</strong> ${data?.transactionId || 'N/A'}
+` +
+                        `<strong>Gateway Status:</strong> ${data?.gatewayStatus || 'N/A'}
+` +
+                        `<strong>Blockchain TX ID:</strong> ${data?.payoutTxID || 'N/A'}<hr><button onclick="viewTransaction('${data.transactionId}')" class="btn btn-sm btn-success">View Record</button>`;
+                } else {
+                    document.getElementById('transaction-details').innerHTML = `<p class="text-success">${result.message || 'Unknown success state.'}</p>`;
+                }
 
-    try {
-        const response = await fetch(`${API_BASE_URL}/stats`);
-        if (!response.ok) throw new Error(`HTTP error! Status: ${response.status}`);
+            } else { // Status 4xx or 5xx (Error)
+                const errorMessage = result?.error || JSON.stringify(result);
+                displayStatus('DANGER', `TRANSACTION FAILED!`);
+                document.getElementById('transaction-details').innerHTML = `<p class="text-danger">Error Detail: ${errorMessage}</p>`;
+            }
 
-        const data = await response.json();
-        console.log("✅ Stats received:", data);
-
-        // Update DOM elements with parsed data
-        document.getElementById('totalTransactions').textContent = `${data.totalTransactions} Transactions`;
-        document.getElementById('grossRevenue').textContent = `$${data.grossRevenue.toFixed(2)}`;
-        document.getElementById('totalFeesCollected').textContent = `$${data.totalFees.toFixed(2)}`;
-
-    } catch (error) {
-        console.error("Failed to fetch statistics:", error);
-        // Fallback display on failure
-        document.getElementById('totalTransactions').innerHTML = '<span style="color: red;">Error</span>';
-        document.getElementById('grossRevenue').innerHTML = '<span style="color: red;">Error</span>';
-        document.getElementById('totalFeesCollected').innerHTML = '<span style="color: red;">Error</span>';
-    }
-}
-
-
-/** 
- * Handles the form submission, packaging data and sending it to the backend for processing.
- */
-async function submitTransaction(event) {
-    event.preventDefault(); // Prevent default HTML form submission behavior
-
-    // 1. Gather Data from Form Inputs (The model inputs)
-    const cardNumber = document.getElementById('card_number').value;
-    const amount = parseFloat(document.getElementById('amount').value);
-    const usdtPayout = parseFloat(document.getElementById('usdt_payout').value);
-
-    if (!cardNumber || isNaN(amount) || isNaN(usdtPayout)) {
-        alert("Please fill out all fields correctly (Card Number, Amount, and Payout).");
-        return;
-    }
-
-    // 2. UI Feedback: Disable button and show loading state
-    const submitBtn = document.getElementById('submit-btn');
-    submitBtn.disabled = true;
-    submitBtn.innerHTML = '<span class="loader">Processing Transaction...</span>';
-
-
-    // 3. API Call to Backend Process Handler
-    try {
-        const response = await fetch(`${API_BASE_URL}/process`, {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({ 
-                card_number: cardNumber, 
-                amount: amount, 
-                usdtPayout: usdtPayout 
-            })
-        });
-
-        const result = await response.json();
-
-        // 4. Handle API Response (Success/Failure)
-        if (result.success) {
-            alert(`✅ SUCCESS! ${result.message}\n\nTransaction ID: ${result.data.transactionId}\nPayout TXID: ${result.data.payoutTxID}`);
-
-            // OPTIONAL: In a real app, you would refresh stats here or show the new record detail
-            fetchAndDisplayStats(); 
-
-        } else {
-            alert(`❌ FAILURE! Reason: ${result.message || 'Unknown Error'}\nDetails: ${result.details || ''}`);
+        } catch (networkError) {
+            // NETWORK FAILSAFE: Catches actual loss of connection or CORS issues
+            displayStatus('CRITICAL', `NETWORK OFFLINE! Check console for server errors.`);
+            console.error("Client-Side Network Failure:", networkError);
+            document.getElementById('transaction-details').innerHTML = `<p class="text-danger">Client Side Connection Error: ${networkError.message}</p>`;
         }
+    });
 
-    } catch (error) {
-        console.error("Client-side submission error:", error);
-        alert(`🚨 NETWORK ERROR: Could not connect to the backend server at ${API_BASE_URL}. Check your console/server logs.`);
-    } finally {
-        // 5. Reset UI State regardless of success or failure
-        document.getElementById('submit-btn').disabled = false;
-        document.getElementById('submit-btn').textContent = 'Process Transaction';
+    // -------------------------------------------
+    // 2. STATS FETCHING LOGIC (GET)
+    // -------------------------------------------
+    document.getElementById('fetch-stats-btn').addEventListener('click', async function() {
+        displayStatus('Fetching stats...', 'info');
+        statsOutput.innerHTML = '<div class="text-center"><i class="fas fa-spinner fa-spin"></i> Fetching...</div>';
+        try {
+            const response = await fetch('/api/stats');
+            if (!response.ok) throw new Error(`HTTP error! Status: ${response.status}`);
+
+            const data = await response.json();
+
+            // Display results cleanly in the stats area
+            let statsHtml = `
+                <ul class="list-group list-group-flush">
+                    <li class="list-group-item"><strong>Total Transactions:</strong> ${data.totalTransactions}</li>
+                    <li class="list-group-item bg-success text-white"><strong>Gross Revenue:</strong> $${data.grossRevenue.toFixed(2)}</li>
+                    <li class="list-group-item bg-warning text-dark"><strong>Total Fees Collected:</strong> $${data.totalFees.toFixed(2)}</li>
+                </ul>
+            `;
+            statsOutput.innerHTML = statsHtml;
+
+        } catch (error) {
+            displayStatus('WARNING', `Could not fetch statistics: ${error.message}`);
+            statsOutput.innerHTML = `<p class="text-danger">Error fetching stats: ${error.message}</p>`;
+        }
+    });
+
+
+    // -------------------------------------------
+    // HELPER FUNCTIONS (Must be accessible globally or defined here)
+    // -------------------------------------------
+
+    /** Updates the global status message area */
+    function displayStatus(message, type) {
+        statusMessage.textContent = message;
+        // Reset classes to apply new style: Bootstrap alert classes handle success/danger/warning etc.
+        statusMessage.className = 'alert text-center mb-4'; 
+        statusMessage.classList.add('alert', `alert-${type}`);
     }
-};
 
-// --- Initialization Call ---
-// Wait for the entire DOM to be loaded before attempting to run scripts
-window.onload = initializeApp; 
-  </script>
+    /** Function to fetch details for a specific transaction ID */
+    window.viewTransaction = function(txId) {
+        // Placeholder: You must implement the GET /api/transactions/:id endpoint in the backend 
+        console.log("Initiating viewTransaction call for:", txId);
+        alert(`(View logic for ${txId} needs implementation on the backend.)`);
+    };
+
+});
+</script>
+
+<!-- Bootstrap JS Bundle (Requires this to function smoothly) -->
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
 </body>
 </html>

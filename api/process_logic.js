@@ -1,31 +1,14 @@
+// PASTE THE ENTIRE CONTENT OF THIS FILE HERE
 const mongoose = require('mongoose');
-// Assuming path to TransactionModel is correct relative to server.js execution point:
 const TransactionModel = require('../models/TransactionModel'); 
-
-/**
- * Helper Function: Mocks the successful payment gateway interaction.
- */
-const mockGatewayCall = async (card, amount) => {
-    console.log(`[Mock Gateway] Authorizing card ${card} for $${amount}...`);
-    await new Promise(resolve => setTimeout(resolve, 800)); // Simulate network latency
-    return { success: true, auth_code: `AUTH-${Date.now()}`, status: 'APPROVED' };
-};
-
-/**
- * Helper Function: Mocks the blockchain submission process.
- */
-const mockBlockchainSubmission = async (usdtAmount) => {
-    console.log(`[Mock Blockchain] Submitting ${usdtAmount} USDT...`);
-    await new Promise(resolve => setTimeout(resolve, 1200)); // Simulate longer network latency
-    return { tx_id: `TX-${Date.now()}-${Math.floor(Math.random() * 100)}`, success: true, status: 'PENDING' };
-};
+// ... (Keep mockGatewayCall and mockBlockchainSubmission as they are) ...
 
 /**
  * Core API Handler Wrapper that routes traffic for /stats and /process endpoint logic.
  */
 const processHandler = async (req, res) => {
     // --- A. GET /api/stats endpoint logic ---
-    if (req.method === 'GET' && req.url.includes('/stats')) {
+    if (req.method === 'GET' &amp;&amp; req.url.includes('/stats')) {
         try {
             console.log("\n🔍 Fetching historical data from MongoDB...");
 
@@ -58,15 +41,17 @@ const processHandler = async (req, res) => {
         } 
     } 
     // --- B. POST /api/process endpoint logic ---
-    else if (req.method === 'POST' && req.url.includes('/process')) {
+    else if (req.method === 'POST' &amp;&amp; req.url.includes('/process')) {
         const { card_number, amount, usdtPayout } = req.body;
 
         if (!card_number || !amount || !usdtPayout) {
+            // Log the failure explicitly for debugging:
+            console.warn("POST /api/process received empty or missing required fields.");
             return res.status(400).json({ error: "Missing required fields: card_number, amount, and usdtPayout are mandatory." });
         }
 
         try {
-            // 1. GATEWAY AUTHORIZATION &amp;amp;BLOCKCHAIN SUBMISSION
+            // 1. GATEWAY AUTHORIZATION &amp;amp;amp;BLOCKCHAIN SUBMISSION
             const gatewayResult = await mockGatewayCall(card_number, amount);
             const chainResult = await mockBlockchainSubmission(parseFloat(usdtPayout));
 
@@ -99,6 +84,7 @@ const processHandler = async (req, res) => {
             });
 
         } catch (error) {
+            // IMPROVED LOGGING TO CATCH THE FAILURE POINT ACCURATELY
             console.error("--- FATAL ERROR DURING TRANSACTION PROCESS ---", error);
             res.status(500).json({ 
                 success: false, 
@@ -113,4 +99,3 @@ const processHandler = async (req, res) => {
 };
 
 module.exports = { processHandler };
-
