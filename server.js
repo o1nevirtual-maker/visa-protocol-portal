@@ -3,7 +3,7 @@ const cors = require('cors');
 const dotenv = require('dotenv');
 const path = require('path');
 const connectDB = require('./dbConnect');
-const { processHandler } = require('./api/process_logic');  // <-- FIXED: added api/
+const { processHandler } = require('./api/process_logic');
 
 dotenv.config();
 
@@ -14,35 +14,32 @@ const PORT = process.env.PORT || 5000;
 app.use(express.json());
 app.use(cors({ origin: '*' }));
 
-// API Routes
+// API Routes — MUST come before static routes
 app.use('/api', processHandler);
 
-// Serve static files
+// Batch override endpoint
+app.post('/api/batch-override', async (req, res) => {
+  res.status(200).json({ message: "Batch overridden successfully!" });
+});
+
+// Serve index.html at root
 app.get('/', (req, res) => {
   res.sendFile(path.join(__dirname, 'index.html'));
 });
 
-// Batch override endpoint
-app.post('/api/batch-override', async (req, res) => {
-  const { batchId, newData } = req.body;
-  try {
-    res.status(200).json({ message: "Batch overridden successfully!" });
-  } catch (error) {
-    res.status(500).json({ error: "Failed to override batch." });
-  }
+// 404 catch-all — returns JSON, never HTML
+app.use((req, res) => {
+  res.status(404).json({ error: `Route not found: ${req.method} ${req.originalUrl}` });
 });
 
 // Start server
 const startServer = async () => {
-  try {
-    await connectDB();
-    app.listen(PORT, () => {
-      console.log(`Server is running on http://localhost:${PORT}`);
-    });
-  } catch (error) {
-    console.error("Failed to start server:", error);
-    process.exit(1);
-  }
+  await connectDB(); // Won't crash if MongoDB is down
+  app.listen(PORT, () => {
+    console.log(`\n✅ Server running on http://localhost:${PORT}`);
+    console.log(`📊 Stats: http://localhost:${PORT}/api/stats`);
+    console.log(`💳 Process: POST http://localhost:${PORT}/api/process`);
+  });
 };
 
 startServer();
