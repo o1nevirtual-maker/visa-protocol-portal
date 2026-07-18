@@ -2,8 +2,8 @@ const express = require('express');
 const cors = require('cors');
 const dotenv = require('dotenv');
 const path = require('path');
-const connectDB = require('./dbConnect'); // Make sure this connects to your MongoDB
-const { processHandler } = require('./process_logic'); // Make sure this handles /api/process and /api/stats
+const connectDB = require('./dbConnect');
+const { processHandler } = require('./process_logic');
 
 dotenv.config();
 
@@ -18,23 +18,11 @@ app.use(cors({ origin: '*' }));
 app.use('/api', processHandler);
 
 // Serve static files
-const publicPath = path.join(__dirname, 'index.html');
 app.get('/', (req, res) => {
-  res.sendFile(publicPath);
+  res.sendFile(path.join(__dirname, 'index.html'));
 });
 
-// Real-time updates (every 5 seconds)
-setInterval(async () => {
-  try {
-    const response = await fetch('/api/stats');
-    const data = await response.json();
-    console.log('Real-time stats:', data);
-  } catch (error) {
-    console.error('Real-time update error:', error);
-  }
-}, 5000);
-
-// Batch override endpoint
+// --- BATCH OVERRIDE ENDPOINT ---
 app.post('/api/batch-override', async (req, res) => {
   const { batchId, newData } = req.body;
   try {
@@ -49,7 +37,7 @@ app.post('/api/batch-override', async (req, res) => {
 // Start server
 const startServer = async () => {
   try {
-    await connectDB(); // Connect to MongoDB
+    await connectDB();
     app.listen(PORT, () => {
       console.log(`Server is running on http://localhost:${PORT}`);
     });
