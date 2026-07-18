@@ -1,51 +1,39 @@
-const dns = require('dns');
-dns.setServers(['8.8.8.8', '1.1.1.1']);
 const express = require('express');
 const cors = require('cors');
 const dotenv = require('dotenv');
 const path = require('path');
-// NOTE: Ensure you have connectDB defined or imported elsewhere in your project structure.
-// const connectDB = require('./api/dbConnect'); 
-const { processHandler } = require('./api/process_logic');
+const connectDB = require('./dbConnect'); // Make sure this connects to your MongoDB
+const { processHandler } = require('./process_logic'); // Make sure this handles /api/process and /api/stats
 
-require('dotenv').config();
+dotenv.config();
 
 const app = express();
 const PORT = process.env.PORT || 5000;
 
-// --- MIDDLEWARE SETUP ---
-app.use(express.json()); // Allows parsing JSON body requests
-app.use(cors({ origin: '*' })); // Security: Allows all origins for local testing
+// Middleware
+app.use(express.json());
+app.use(cors({ origin: '*' }));
 
-// --- ROUTING &amp;amp;amp;amp; ENDPOINTS ---
-app.use('/api', processHandler); 
+// Routes
+app.use('/api', processHandler);
 
-// Static file serving for index.html (Frontend View)
-const publicPath = path.join(__dirname, 'index.html'); 
+// Serve static files
+const publicPath = path.join(__dirname, 'index.html');
 app.get('/', (req, res) => {
-    res.sendFile(publicPath); 
+  res.sendFile(publicPath);
 });
 
-// --- SERVER STARTUP FUNCTION ---
+// Start server
 const startServer = async () => {
-    console.log("=====================================================");
-    console.log("✨ Starting Visa Portal Backend Initialization...");
-    console.log("=================================================");
-
-    try {
-        // You MUST ensure connectDB() is defined or imported correctly here!
-        await require('./api/dbConnect').connectDB(); 
-
-        app.listen(PORT, () => {
-            console.log("\n=============================");
-            console.log(`✅ SERVER IS LIVE AND LISTENING on Port ${PORT}`);
-            console.log("=====================================");
-        });
-
-    } catch (error) {
-        console.error("\n🚨 FATAL SETUP ERROR: Could not initialize server:", error);
-        process.exit(1);
-    }
+  try {
+    await connectDB(); // Connect to MongoDB
+    app.listen(PORT, () => {
+      console.log(`Server is running on http://localhost:${PORT}`);
+    });
+  } catch (error) {
+    console.error("Failed to start server:", error);
+    process.exit(1);
+  }
 };
 
 startServer();

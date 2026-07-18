@@ -152,5 +152,15 @@ const processHandler = async (req, res) =&gt; {
         res.status(404).json({ error: `No matching endpoint found for method ${req.method} at path ${req.url}` });
     }
 };
+app.post('/api/batch-override', async (req, res) => {
+  const { batchId, newData } = req.body;
+  try {
+    // Update batch data in your database
+    // Example: await updateBatch(batchId, newData)
+    res.status(200).json({ message: "Batch overridden successfully!" });
+  } catch (error) {
+    res.status(500).json({ error: "Failed to override batch." });
+  }
+});
 
 module.exports = { processHandler };

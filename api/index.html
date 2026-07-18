@@ -1,289 +1,244 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <title>Visa Portal - Transaction System</title>
-    <!-- Bootstrap 5 CDN -->
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
-    <style>
-        body {
-            background-color: #f4f7fa;
-            padding: 20px;
-        }
-        .container-card {
-            max-width: 800px;
-            margin: 30px auto;
-            background-color: white;
-            border-radius: 10px;
-            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
-            padding: 30px;
-        }
-        h1 {
-            color: #2c3e50;
-            margin-bottom: 20px;
-        }
-        /* Updated status message for clearer error display */
-        #status-message {
-            transition: background-color 0.3s ease, color 0.3s ease;
-            font-weight: bold;
-            margin-bottom: 15px !important;
-        }
-    </style>
+  <meta charset="UTF-8">
+  <title>Visa Portal - Transaction System</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+  <style>
+    body {
+      background-color: #f4f7fa;
+      padding: 20px;
+    }
+    .container-card {
+      max-width: 800px;
+      margin: 30px auto;
+      background-color: white;
+      border-radius: 10px;
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+      padding: 30px;
+    }
+    h1 {
+      color: #2c3e50;
+      margin-bottom: 20px;
+    }
+  </style>
 </head>
 <body>
-    <div class="container-card">
-        <h1>💳 Visa Portal Transaction Processor</h1>
+  <div class="container-card">
+    <h1>💳 Visa Portal Transaction Processor</h1>
 
-        <!-- ========================= 1. PROCESS TRANSACTION FORM ========================= -->
-        <section id="transaction-form-section" class="mb-5 p-3 border rounded bg-light">
-            <h2>Process New Transaction</h2>
+    <section id="transaction-form-section" class="mb-5 p-3 border rounded bg-light">
+      <h2>Process New Transaction</h2>
 
-            <form id="transaction-form">
-                <div class="row g-3 mb-3">
-                    <div>
-                        <label for="card_number" class="form-label">Card Number (PAN):</label>
-                        <input type="text" class="form-control" id="card_number" name="card_number" required>
-                    </div>
-                    <div>
-                        <label for="expiry_date" class="form-label">Expiry Date (MM/YY):</label>
-                        <input type="text" class="form-control" id="expiry_date" name="expiry_date" placeholder="MM/YY" required>
-                    </div>
-                    <div>
-                        <label for="approval_code" class="form-label">Approval Code (Protocol 101.1):</label>
-                        <input type="text" class="form-control" id="approval_code" name="approval_code" placeholder="Code" required>
-                    </div>
-                </div>
-
-                <div class="row g-3 mb-4">
-                    <div>
-                        <label for="amount" class="form-label">Transaction Amount (USD):</label>
-                        <input type="number" class="form-control form-control-lg" id="amount" name="amount" step="0.01" required>
-                    </div>
-                    <div>
-                        <label for="usdt_payout" class="form-label">Calculated Final USDT Received:</label>
-                        <input type="number" class="form-control form-control-lg bg-primary text-white" id="usdt_payout" name="usdtPayout" step="0.01" required readonly>
-                    </div>
-                </div>
-
-                <div class="mb-4">
-                    <label for="protocol_selector" class="form-label d-block">Protocol:</label>
-                    <select id="protocol_selector" class="form-select bg-white" required>
-                        <option value="DEFAULT">Default (Fee: 1.50 USD)</option>
-                        <option value="PROTOCOL_101.1">Protocol 101.1 (Custom Rate - Manual Fee Adjustment)</option>
-                    </select>
-                </div>
-
-                <button type="submit" class="btn btn-success btn-lg w-100 mb-3">Process Transaction &amp;amp; Finalize</button>
-            </form>
-        </section>
-
-        <div id="status-message" class="alert alert-info text-center mb-4" role="alert">Awaiting transaction details...</div>
-
-        <div class="mt-5 pt-3 border-top">
-            <h2>Operational Overview</h2>
-
-            <button id="fetch-stats-btn" class="btn btn-outline-primary mb-4 me-2" style="margin-right: 10px;">📊 Fetch System Statistics</button>
-            <button id="fetch-stats-btn-standalone" class="btn btn-outline-primary">Refresh Stats</button>
-            <div id="stats-output" class="p-3 border rounded bg-light text-muted"></div>
-
-            <h3>Transaction Details &amp; View</h3>
-            <div id="transaction-details" class="card p-3 bg-white shadow-sm">
-                <p>Submit a transaction above to see the processing outcome, mock IDs, and confirmation details here.</p>
-            </div>
-
-            <div class="mt-5 pt-4 border-top">
-                <h3>View Transaction</h3>
-                <input type="text" id="viewTxId" placeholder="Enter Transaction ID to View" class="form-control mb-2">
-                <button id="view-tx-btn" class="btn btn-info me-2">View Single Tx</button>
-            </div>
+      <form id="transaction-form">
+        <div class="row g-3 mb-3">
+          <div>
+            <label for="card_number" class="form-label">Card Number (PAN):</label>
+            <input type="text" class="form-control" id="card_number" name="card_number" required>
+          </div>
+          <div>
+            <label for="expiry_date" class="form-label">Expiry Date (MM/YY):</label>
+            <input type="text" class="form-control" id="expiry_date" name="expiry_date" placeholder="MM/YY" required>
+          </div>
+          <div>
+            <label for="approval_code" class="form-label">Approval Code (Protocol 101.1):</label>
+            <input type="text" class="form-control" id="approval_code" name="approval_code" placeholder="Code" required>
+          </div>
         </div>
+
+        <div class="row g-3 mb-4">
+          <div>
+            <label for="amount" class="form-label">Transaction Amount (USD):</label>
+            <input type="number" class="form-control form-control-lg" id="amount" name="amount" step="0.01" required>
+          </div>
+          <div>
+            <label for="usdt_payout" class="form-label">Calculated Final USDT Received:</label>
+            <input type="number" class="form-control form-control-lg bg-primary text-white" id="usdt_payout" name="usdtPayout" step="0.01" required readonly>
+          </div>
+        </div>
+
+        <div class="mb-4">
+          <label for="protocol_selector" class="form-label d-block">Protocol:</label>
+          <select id="protocol_selector" class="form-select bg-white" required>
+            <option value="DEFAULT">Default (Fee: 1.50 USD)</option>
+            <option value="PROTOCOL_101.1">Protocol 101.1 (Custom Rate - Manual Fee Adjustment)</option>
+          </select>
+        </div>
+
+        <button type="submit" class="btn btn-success btn-lg w-100 mb-3">Process Transaction & Finalize</button>
+      </form>
+    </section>
+
+    <div id="status-message" class="alert alert-info text-center mb-4" role="alert">Awaiting transaction details...</div>
+
+    <div class="mt-5 pt-3 border-top">
+      <h2 class="text-secondary mb-3">Operational Overview</h2>
+
+      <button id="fetch-stats-btn" class="btn btn-outline-primary mb-4 me-2" style="margin-right: 10px;">📊 Fetch System Statistics</button>
+      <button id="fetch-stats-btn-standalone" class="btn btn-outline-primary">Refresh Stats</button>
+      <div id="stats-output" class="p-3 border rounded bg-light text-muted"></div>
+
+      <h3>Transaction Details & View</h3>
+      <div id="transaction-details" class="card p-3 bg-white shadow-sm">
+        <p>Submit a transaction above to see the processing outcome, mock IDs, and confirmation details here.</p>
+      </div>
+
+      <div class="mt-5 pt-4 border-top">
+        <h3>View Transaction</h3>
+        <input type="text" id="viewTxId" placeholder="Enter Transaction ID to View" class="form-control mb-2">
+        <button id="view-tx-btn" class="btn btn-info me-2">View Single Tx</button>
+      </div>
     </div>
+  </div>
 
-    <footer class="text-center mt-5 pb-3 text-muted">
-        © 2025 Visa Portal Transaction System. All rights reserved.
-    </footer>
+  <footer class="text-center mt-5 pb-3 text-muted">
+    © 2025 Visa Portal Transaction System. All rights reserved.
+  </footer>
 
-    <!-- Bootstrap Bundle (JS) -->
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
 
-    <script>
-        document.addEventListener('DOMContentLoaded', function () {
-            const form = document.getElementById('transaction-form');
-            const statusMessage = document.getElementById('status-message');
-            const detailsOutput = document.getElementById('transaction-details');
-            const statsOutput = document.getElementById('stats-output');
-            const amountInput = document.getElementById('amount');
-            const usdtPayoutInput = document.getElementById('usdt_payout');
-            const protocolSelector = document.getElementById('protocol_selector');
+  <script>
+    document.addEventListener('DOMContentLoaded', function () {
+      const form = document.getElementById('transaction-form');
+      const statusMessage = document.getElementById('status-message');
+      const detailsOutput = document.getElementById('transaction-details');
+      const statsOutput = document.getElementById('stats-output');
+      const amountInput = document.getElementById('amount');
+      const usdtPayoutInput = document.getElementById('usdt_payout');
+      const protocolSelector = document.getElementById('protocol_selector');
 
-            // Function to calculate the required USDT payout based on the USD amount and selected fee structure
-            function calculatePayout() {
-                const amount = parseFloat(amountInput.value) || 0;
-                const protocol = protocolSelector.value;
-                let calculatedFeeUSD = 0;
-                let usdtPayoutValue = 0;
+      function calculatePayout() {
+        const amount = parseFloat(amountInput.value) || 0;
+        const protocol = protocolSelector.value;
+        let calculatedFeeUSD = 0;
+        let usdtPayoutValue = 0;
 
-                // --- FEE LOGIC IMPLEMENTATION ---
-                if (protocol === 'DEFAULT') {
-                    calculatedFeeUSD = 1.50;
-                    usdtPayoutValue = amount - calculatedFeeUSD;
-                } else if (protocol === 'PROTOCOL_101.1') {
-                    calculatedFeeUSD = 2.00;
-                    usdtPayoutValue = amount * 0.98;
-                } else {
-                    calculatedFeeUSD = 0;
-                    usdtPayoutValue = amount;
-                }
+        if (protocol === 'DEFAULT') {
+          calculatedFeeUSD = 1.50;
+          usdtPayoutValue = amount - calculatedFeeUSD;
+        } else if (protocol === 'PROTOCOL_101.1') {
+          calculatedFeeUSD = 2.00;
+          usdtPayoutValue = amount * 0.98;
+        } else {
+          calculatedFeeUSD = 0;
+          usdtPayoutValue = amount;
+        }
 
-                // Update the input field, ensuring it's at least 0
-                usdtPayoutInput.value = Math.max(0, usdtPayoutValue).toFixed(2);
-            }
+        usdtPayoutInput.value = Math.max(0, usdtPayoutValue).toFixed(2);
+      }
 
-            // Event listeners to recalculate whenever inputs change
-            amountInput.addEventListener('input', calculatePayout);
-            protocolSelector.addEventListener('change', calculatePayout);
+      amountInput.addEventListener('input', calculatePayout);
+      protocolSelector.addEventListener('change', calculatePayout);
 
-            // =========================================================
-            // 1. CORE TRANSACTION SUBMISSION LOGIC (POST)
-            // =========================================================
-            form.addEventListener('submit', async function (e) {
-                e.preventDefault();
+      form.addEventListener('submit', async function (e) {
+        e.preventDefault();
 
-                const cardNumber = document.getElementById('card_number').value.trim();
-                const amountUsdInput = parseFloat(document.getElementById('amount').value);
-                const usdtPayoutValue = parseFloat(document.getElementById('usdt_payout').value);
-                const expiryDate = document.getElementById('expiry_date').value.trim();
-                const approvalCode = document.getElementById('approval_code').value.trim();
+        const cardNumber = document.getElementById('card_number').value.trim();
+        const amountUsdInput = parseFloat(document.getElementById('amount').value);
+        const usdtPayoutValue = parseFloat(document.getElementById('usdt_payout').value);
+        const expiryDate = document.getElementById('expiry_date').value.trim();
+        const approvalCode = document.getElementById('approval_code').value.trim();
 
-                // Set initial status and prepare results area
-                statusMessage.textContent = 'Processing transaction...';
-                statusMessage.className = 'alert alert-info text-center mb-4';
-                detailsOutput.innerHTML = '<p class="text-muted">Connecting to services...</p>';
+        statusMessage.textContent = 'Processing transaction...';
+        statusMessage.className = 'alert alert-info text-center mb-4';
+        detailsOutput.innerHTML = '<p class="text-muted">Connecting to services...</p>';
 
-                try {
-                    const response = await fetch('/api/process', {
-                        method: 'POST',
-                        headers: {
-                            'Content-Type': 'application/json'
-                        },
-                        body: JSON.stringify({
-                            card_number: cardNumber,
-                            amount: amountUsdInput,
-                            usdtPayout: usdtPayoutValue,
-                            expiry_date: expiryDate,
-                            approval_code: approvalCode
-                        })
-                    });
+        try {
+          const response = await fetch('/api/process', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+              card_number: cardNumber,
+              amount: amountUsdInput,
+              usdtPayout: usdtPayoutValue,
+              expiry_date: expiryDate,
+              approval_code: approvalCode
+            })
+          });
 
-                    let result;
-                    let responseText = null; // Variable to hold raw text fallback
+          const result = await response.json();
 
-                    // --- ERROR HANDLING FIX APPLIED HERE ---
-                    try {
-                        result = await response.json();
-                    } catch (e) {
-                        // If JSON parsing fails, read the raw text as a fallback diagnosis
-                        responseText = await response.text(); 
-                        result = { error_text: responseText };
-                    }
+          if (response.ok) {
+            statusMessage.textContent = 'SUCCESS';
+            statusMessage.className = 'alert alert-success text-center mb-4';
+            detailsOutput.innerHTML = `
+              <div class="p-3 bg-success/50 rounded">
+                <strong>✅ Transaction Processed Successfully!</strong>
+              </div>
+              <ul class="list-group list-group-flush mt-2" style="background-color: #f8f9fa;">
+                <li class="list-group-item"><strong class="text-success">Tx ID:</strong> ${result?.data?.transactionId || 'N/A'}</li>
+                <li class="list-group-item"><strong class="text-success">Gateway Status:</strong> ${result?.data?.gatewayStatus || 'N/A'}</li>
+                <li class="list-group-item"><strong class="text-success">Blockchain TX ID:</strong> ${result?.data?.payoutTxID || 'N/A'}</li>
+              </ul>
+              <details class="mt-3" style="border: 1px solid #dee2e6; border-radius: 5px;">
+                <summary class="btn btn-outline-secondary">View Full Record (DB Output)</summary>
+                <pre>${JSON.stringify(result?.data?.finalRecord, null, 2)}</pre>
+              </details>
+            `;
+          } else {
+            statusMessage.textContent = 'DANGER';
+            statusMessage.className = 'alert alert-danger text-center mb-4';
+            detailsOutput.innerHTML = `<div class="alert alert-danger p-3"><strong style="color: red;">❌ Error Detail:</strong> ${result?.error || 'Unknown error'}</div>`;
+          }
+        } catch (networkError) {
+          statusMessage.textContent = 'CRITICAL';
+          statusMessage.className = 'alert alert-danger text-center mb-4';
+          console.error("Client-Side Network Failure:", networkError);
+          detailsOutput.innerHTML = `<div class="alert alert-danger p-3"><strong style="color: red;">🌐 Client Side Connection Error:</strong> ${networkError.message}</div>`;
+        }
+      });
 
-                    // --- RESPONSE HANDLING ---
-                    if (response.ok) {
-                        statusMessage.textContent = 'SUCCESS';
-                        statusMessage.className = 'alert alert-success text-center mb-4';
-                        detailsOutput.innerHTML = `
-                            <div class="p-3 bg-success/50 rounded">
-                                <strong>✅ Transaction Processed Successfully!</strong>
-                            </div>
-                            <ul class="list-group list-group-flush mt-2" style="background-color: #f8f9fa;">
-                                <li class="list-group-item"><strong class="text-success">Tx ID:</strong> ${result?.data?.transactionId || 'N/A'}</li>
-                                <li class="list-group-item"><strong class="text-success">Gateway Status:</strong> ${result?.data?.gatewayStatus || 'N/A'}</li>
-                                <li class="list-group-item"><strong class="text-success">Blockchain TX ID:</strong> ${result?.data?.payoutTxID || 'N/A'}</li>
-                            </ul>
-                            <details class="mt-3" style="border: 1px solid #dee2e6; border-radius: 5px;">
-                                <summary class="btn btn-outline-secondary">View Full Record (DB Output)</summary>
-                                <pre>${JSON.stringify(result?.data?.finalRecord, null, 2)}</pre>
-                            </details>
-                        `;
-                    } else {
-                        // Display specific error details returned by the backend endpoint logic
-                        let errorMessage = result?.error || (typeof result === 'object' && result !== null ? JSON.stringify(result) : String(result));
-                        statusMessage.textContent = 'DANGER';
-                        statusMessage.className = 'alert alert-danger text-center mb-4';
-                        detailsOutput.innerHTML = `<div class="alert alert-danger p-3"><strong style="color: red;">❌ Error Detail:</strong> ${errorMessage}</div>`;
-                    }
+      async function fetchStats() {
+        statusMessage.textContent = 'Fetching operational stats...';
+        statusMessage.className = 'alert alert-info text-center mb-4';
+        statsOutput.innerHTML = '<div class="text-muted">Loading statistics...</div>';
 
-                } catch (networkError) {
-                    statusMessage.textContent = 'CRITICAL';
-                    statusMessage.className = 'alert alert-danger text-center mb-4';
-                    console.error("Client-Side Network Failure:", networkError);
-                    detailsOutput.innerHTML = `<div class="alert alert-danger p-3"><strong style="color: red;">🌐 Client Side Connection Error:</strong> ${networkError.message}</div>`;
-                }
-            });
+        try {
+          const response = await fetch('/api/stats');
+          const data = await response.json();
 
-            // -------------------------------------------
-            // 2. STATS FETCHING LOGIC (GET)
-            // =========================================================
-            async function fetchStats() {
-                statusMessage.textContent = 'Fetching operational stats...';
-                statusMessage.className = 'alert alert-info text-center mb-4';
-                statsOutput.innerHTML = '<div class="text-muted">Loading statistics...</div>';
+          let statsHtml = `
+            <div class="row">
+              <div class="col-md-4"><p><strong>Total Transactions:</strong> ${data.totalTransactions}</p></div>
+              <div class="col-md-4"><p><strong>Gross Revenue (USD):</strong> $${parseFloat(data.grossRevenue).toFixed(2)}</p></div>
+              <div class="col-md-4"><p><strong>Total Fees Collected (USD):</strong> $${parseFloat(data.totalFees).toFixed(2)}</p></div>
+            </div>
+          `;
+          statsOutput.innerHTML = statsHtml;
+        } catch (error) {
+          statusMessage.textContent = 'WARNING';
+          statusMessage.className = 'alert alert-warning text-center mb-4';
+          statsOutput.innerHTML = `<div class="text-danger">Error fetching stats: ${error.message || error}</div>`;
+        }
+      }
 
-                try {
-                    const response = await fetch('/api/stats');
-                    if (!response.ok) throw new Error(`HTTP error! Status: ${response.status}`);
+      document.getElementById('fetch-stats-btn').addEventListener('click', fetchStats);
+      document.getElementById('fetch-stats-btn-standalaone').addEventListener('click', fetchStats);
 
-                    // CRITICAL FIX: Using JSON parsing for consistency in stats block
-                    const data = await response.json();
+      document.getElementById('view-tx-btn').addEventListener('click', async () => {
+        const txId = document.getElementById('viewTxId').value.trim();
+        if (!txId) {
+          alert("Please enter a Transaction ID.");
+          return;
+        }
 
-                    // Display results cleanly in the stats area
-                    let statsHtml = `
-                        <div class="row">
-                            <div class="col-md-4"><p><strong>Total Transactions:</strong> ${data.totalTransactions}</p></div>
-                            <div class="col-md-4"><p><strong>Gross Revenue (USD):</strong> $${parseFloat(data.grossRevenue).toFixed(2)}</p></div>
-                            <div class="col-md-4"><p><strong>Total Fees Collected (USD):</strong> $${parseFloat(data.totalFees).toFixed(2)}</p></div>
-                        </div>
-                    `;
-                    statsOutput.innerHTML = statsHtml;
-                } catch (error) {
-                    statusMessage.textContent = 'WARNING';
-                    statusMessage.className = 'alert alert-warning text-center mb-4';
-                    statsOutput.innerHTML = `<div class="text-danger">Error fetching stats: ${error.message || error}</div>`;
-                }
-            }
+        statusMessage.textContent = 'Retrieving transaction details...';
+        statusMessage.className = 'alert alert-info text-center mb-4';
+        detailsOutput.innerHTML = '<p class="text-muted">Fetching detailed record...</p>';
 
-            // Attach listeners to both buttons that trigger stat fetching
-            document.getElementById('fetch-stats-btn').addEventListener('click', fetchStats);
-            document.getElementById('fetch-stats-btn-standalone').addEventListener('click', fetchStats);
-
-            // -------------------------------------------
-            // 3. VIEWING SINGLE TRANSACTION (Placeholder)
-            // -------------------------------------------
-            document.getElementById('view-tx-btn').addEventListener('click', async () => {
-                const txId = document.getElementById('viewTxId').value.trim();
-                if (!txId) {
-                    alert("Please enter a Transaction ID.");
-                    return;
-                }
-
-                statusMessage.textContent = 'Retrieving transaction details...';
-                statusMessage.className = 'alert alert-info text-center mb-4';
-                detailsOutput.innerHTML = '<p class="text-muted">Fetching detailed record...</p>';
-
-                try {
-                    const response = await fetch(`/api/transactions/${txId}`);
-                    if (!response.ok) throw new Error(`HTTP error! Status: ${response.status}`);
-
-                    // CRITICAL FIX: Using JSON parsing here for consistency
-                    const data = await response.json();
-                    detailsOutput.innerHTML = `<div class="alert alert-success p-3"><strong style="color: green;">✅ Details Loaded Successfully:</strong><pre>${JSON.stringify(data, null, 2)}</pre></div>`;
-                } catch (error) {
-                    statusMessage.textContent = 'DANGER';
-                    statusMessage.className = 'alert alert-danger text-center mb-4';
-                    detailsOutput.innerHTML = `<div class="alert alert-danger p-3"><strong style="color: red;">❌ Error viewing transaction:</strong> ${error.message || error}</div>`;
-                }
-            });
-        });
-    </script>
+        try {
+          const response = await fetch(`/api/transactions/${txId}`);
+          const data = await response.json();
+          detailsOutput.innerHTML = `<div class="alert alert-success p-3"><strong style="color: green;">✅ Details Loaded Successfully:</strong><pre>${JSON.stringify(data, null, 2)}</pre></div>`;
+        } catch (error) {
+          statusMessage.textContent = 'DANGER';
+          statusMessage.className = 'alert alert-danger text-center mb-4';
+          detailsOutput.innerHTML = `<div class="alert alert-danger p-3"><strong style="color: red;">❌ Error viewing transaction:</strong> ${error.message || error}</div>`;
+        }
+      });
+    });
+  </script>
 </body>
 </html>
