@@ -1,9 +1,9 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
+  <meta charset="UTF-8" />
   <title>Visa Portal - Transaction System</title>
-  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet" />
   <style>
     body {
       background-color: #f4f7fa;
@@ -34,26 +34,26 @@
         <div class="row g-3 mb-3">
           <div>
             <label for="card_number" class="form-label">Card Number (PAN):</label>
-            <input type="text" class="form-control" id="card_number" name="card_number" required>
+            <input type="text" class="form-control" id="card_number" name="card_number" required />
           </div>
           <div>
             <label for="expiry_date" class="form-label">Expiry Date (MM/YY):</label>
-            <input type="text" class="form-control" id="expiry_date" name="expiry_date" placeholder="MM/YY" required>
+            <input type="text" class="form-control" id="expiry_date" name="expiry_date" placeholder="MM/YY" required />
           </div>
           <div>
             <label for="approval_code" class="form-label">Approval Code (Protocol 101.1):</label>
-            <input type="text" class="form-control" id="approval_code" name="approval_code" placeholder="Code" required>
+            <input type="text" class="form-control" id="approval_code" name="approval_code" placeholder="Code" required />
           </div>
         </div>
 
         <div class="row g-3 mb-4">
           <div>
             <label for="amount" class="form-label">Transaction Amount (USD):</label>
-            <input type="number" class="form-control form-control-lg" id="amount" name="amount" step="0.01" required>
+            <input type="number" class="form-control form-control-lg" id="amount" name="amount" step="0.01" required />
           </div>
           <div>
             <label for="usdt_payout" class="form-label">Calculated Final USDT Received:</label>
-            <input type="number" class="form-control form-control-lg bg-primary text-white" id="usdt_payout" name="usdtPayout" step="0.01" required readonly>
+            <input type="number" class="form-control form-control-lg bg-primary text-white" id="usdt_payout" name="usdtPayout" step="0.01" required readonly />
           </div>
         </div>
 
@@ -85,7 +85,7 @@
 
       <div class="mt-5 pt-4 border-top">
         <h3>View Transaction</h3>
-        <input type="text" id="viewTxId" placeholder="Enter Transaction ID to View" class="form-control mb-2">
+        <input type="text" id="viewTxId" placeholder="Enter Transaction ID to View" class="form-control mb-2" />
         <button id="view-tx-btn" class="btn btn-info me-2">View Single Tx</button>
       </div>
     </div>
@@ -215,7 +215,7 @@
       }
 
       document.getElementById('fetch-stats-btn').addEventListener('click', fetchStats);
-      document.getElementById('fetch-stats-btn-standalaone').addEventListener('click', fetchStats);
+      document.getElementById('fetch-stats-btn-standalone').addEventListener('click', fetchStats);
 
       document.getElementById('view-tx-btn').addEventListener('click', async () => {
         const txId = document.getElementById('viewTxId').value.trim();
@@ -238,6 +238,61 @@
           detailsOutput.innerHTML = `<div class="alert alert-danger p-3"><strong style="color: red;">❌ Error viewing transaction:</strong> ${error.message || error}</div>`;
         }
       });
+
+      // Real-time updates
+      const realTimeUpdateInterval = setInterval(async () => {
+        try {
+          const response = await fetch('/api/stats');
+          const data = await response.json();
+
+          let statsHtml = `
+            <div class="row">
+              <div class="col-md-4"><p><strong>Total Transactions:</strong> ${data.totalTransactions}</p></div>
+              <div class="col-md-4"><p><strong>Gross Revenue (USD):</strong> $${parseFloat(data.grossRevenue).toFixed(2)}</p></div>
+              <div class="col-md-4"><p><strong>Total Fees Collected (USD):</strong> $${parseFloat(data.totalFees).toFixed(2)}</p></div>
+            </div>
+          `;
+          statsOutput.innerHTML = statsHtml;
+        } catch (error) {
+          console.error('Real-time update error:', error);
+        }
+      }, 5000); // Update every 5 seconds
+
+      // Batch override
+      document.getElementById('batch-override-btn').addEventListener('click', async () => {
+        const batchId = prompt('Enter Batch ID to override:', '');
+        if (!batchId) return;
+
+        const newData = prompt('Enter new data (JSON format):', '{}');
+        if (!newData) return;
+
+        try {
+          const response = await fetch('/api/batch-override', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({ batchId, newData })
+          });
+
+          const result = await response.json();
+          alert(result.message);
+        } catch (error) {
+          console.error('Batch override error:', error);
+        }
+      });
+
+      // Error log
+      const errorLog = document.createElement('div');
+      errorLog.id = 'error-log';
+      errorLog.className = 'mt-4 p-3 border rounded bg-light';
+      document.body.appendChild(errorLog);
+
+      window.onerror = function (message, source, lineno, colno, error) {
+        const log = `Error: ${message}\nSource: ${source}\nLine: ${lineno}\nColumn: ${colno}\nError: ${error}`;
+        errorLog.innerHTML = `<strong>⚠️ Error Log:</strong><pre>${log}</pre>`;
+        return true; // Prevent default error handling
+      };
     });
   </script>
 </body>

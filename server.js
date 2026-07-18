@@ -23,6 +23,29 @@ app.get('/', (req, res) => {
   res.sendFile(publicPath);
 });
 
+// Real-time updates (every 5 seconds)
+setInterval(async () => {
+  try {
+    const response = await fetch('/api/stats');
+    const data = await response.json();
+    console.log('Real-time stats:', data);
+  } catch (error) {
+    console.error('Real-time update error:', error);
+  }
+}, 5000);
+
+// Batch override endpoint
+app.post('/api/batch-override', async (req, res) => {
+  const { batchId, newData } = req.body;
+  try {
+    // Update batch data in your database
+    // Example: await updateBatch(batchId, newData)
+    res.status(200).json({ message: "Batch overridden successfully!" });
+  } catch (error) {
+    res.status(500).json({ error: "Failed to override batch." });
+  }
+});
+
 // Start server
 const startServer = async () => {
   try {
