@@ -1,13 +1,16 @@
-// PASTE THE ENTIRE CONTENT OF THIS FILE HERE
 const mongoose = require('mongoose');
-const TransactionModel = require('../models/TransactionModel'); 
+// *** Assuming this model exists and is correctly linked ***
+// const TransactionModel = require('../models/TransactionModel'); 
 
-// --- MOCK FUNCTIONS (Replace with your actual API calls) ---
+// --- MOCK FUNCTIONS: These MUST be updated with your real API clients ---
 
+/**
+ * Replaces mockGatewayCall. This MUST call your live payment processor endpoint.
+ */
 async function processGateway(card_number, amount, expiry_date, approval_code) {
     console.log(`[REAL API] Calling Payment Gateway with Card: ${card_number}, Amount: ${amount}`);
     try {
-        // *** &lt;&lt;&lt; PASTE YOUR ACTUAL GATEWAY API CALL HERE &gt;&gt;&gt; ***
+        // IMPORTANT: Replace this URL and implementation block!
         const response = await fetch('YOUR_LIVE_GATEWAY_API_ENDPOINT', { 
             method: 'POST',
             headers: {'Content-Type': 'application/json'},
@@ -20,22 +23,25 @@ async function processGateway(card_number, amount, expiry_date, approval_code) {
         });
 
         if (!response.ok) {
-             // Try to parse error body if available
+             // Improved error reading for gateway failure
             const errorBody = await response.text();
             throw new Error(`Gateway API failure (${response.status}): ${errorBody ? errorBody : response.statusText}`);
         }
-        return await response.json(); // Await and return parsed JSON data
+        return JSON.parse(await response.text()); // Assumes success returns JSON text
     } catch (error) {
         console.error("Error calling Gateway:", error);
-        // Throw an object describing the failure for client consumption
+        // Throw an object structure indicating the source of failure
         throw { step: 'GATEWAY_FAIL', message: error.message, detail: error };
     }
 }
 
+/**
+ * Replaces mockBlockchainSubmission. This MUST call your actual crypto submission API.
+ */
 async function submitCrypto(usdtPayout) {
     console.log(`[REAL API] Calling Crypto Submission Endpoint for ${usdtPayout} USDT`);
     try {
-        // *** &lt;&lt;&lt; PASTE YOUR ACTUAL CRYPTO SUBMISSION API CALL HERE &gt;&gt;&gt; ***
+        // IMPORTANT: Replace this URL and implementation block!
         const response = await fetch('YOUR_LIVE_CRYPTO_API_ENDPOINT', { 
             method: 'POST',
             headers: {'Content-Type': 'application/json'},
@@ -46,10 +52,10 @@ async function submitCrypto(usdtPayout) {
             const errorBody = await response.text();
             throw new Error(`Crypto API failure (${response.status}): ${errorBody ? errorBody : response.statusText}`);
         }
-        return await response.json(); 
+        return JSON.parse(await response.text()); 
     } catch (error) {
         console.error("Error calling Crypto:", error);
-        // Throw an object describing the failure for client consumption
+        // Throw an object structure indicating the source of failure
         throw { step: 'CRYPTO_FAIL', message: error.message, detail: error };
     }
 }
@@ -57,9 +63,9 @@ async function submitCrypto(usdtPayout) {
 /**
  * Core API Handler Wrapper that routes traffic for /stats and /process endpoint logic.
 */
-const processHandler = async (req, res) => {
+const processHandler = async (req, res) =&gt; {
     // --- A. GET /api/stats endpoint logic ---
-    if (req.method === 'GET' && req.url.includes('/stats')) {
+    if (req.method === 'GET' &amp;&amp; req.url.includes('/stats')) {
         try {
             console.log("\n🔍 Fetching historical data from MongoDB...");
             const stats = await mongoose.model('Transaction').aggregate([
@@ -83,7 +89,7 @@ const processHandler = async (req, res) => {
         } 
     }
     // --- B. POST /api/process endpoint logic ---
-    else if (req.method === 'POST' && req.url.includes('/process')) {
+    else if (req.method === 'POST' &amp;&amp; req.url.includes('/process')) {
         const { card_number, amount, usdtPayout, expiry_date, approval_code } = req.body;
 
         if (!card_number || !amount || !usdtPayout) {
@@ -91,11 +97,11 @@ const processHandler = async (req, res) => {
         }
 
         try {
-            // 1. GATEWAY AUTHORIZATION &amp;amp; BLOCKCHAIN SUBMISSION
-            const gatewayResult = await processGateway(card_number, parseFloat(amount), expiry_date || 'N/A', approval_code || 'N/A');
-            const chainResult = await submitCrypto(parseFloat(usdtPayout));
+            // 1. EXECUTE REAL SERVICES in sequence (Gateway first for authorization lock)
+            let gatewayResult = await processGateway(card_number, parseFloat(amount), expiry_date || 'N/A', approval_code || 'N/A');
+            let chainResult = await submitCrypto(parseFloat(usdtPayout));
 
-            // 2. DATABASE PERSISTENCE
+            // 2. DATABASE PERSISTENCE (Transaction Record)
             const transactionRecord = {
                 protocol_code: 'UNKNOWN',
                 card_number_masked: card_number,
@@ -126,10 +132,10 @@ const processHandler = async (req, res) => {
             });
 
         } catch (error) {
-            // Comprehensive error handling: Determine if the error came from a specific service failure or general Mongo error
+            // Comprehensive error handling: Capture failure source
             let detailedError = "Unknown critical error.";
-            if (typeof error === 'object' && error.step) {
-                detailedError = `Service Failure (${error.step}): ${error.message}. Details: ${JSON.stringify(error.detail)}`;
+            if (typeof error === 'object' && error !== null && 'step' in error) {
+                detailedError = `Service Failure (${error.step}): ${error.message}. Details: ${JSON.stringify(error.detail || {})}`;
             } else {
                 // Generic server/DB error
                 detailedError = `Internal Server Error: ${error.message || "See stack trace for details."}`;
@@ -147,7 +153,4 @@ const processHandler = async (req, res) => {
     }
 };
 
-
 module.exports = { processHandler };
-
-// END OF FILE
