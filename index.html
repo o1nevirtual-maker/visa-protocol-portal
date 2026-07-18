@@ -158,146 +158,121 @@
   </div>
 
   <script>
-    const TX_API = '/api';
+// ============================================================
+// JAVASCRIPT FOR INDEX.HTML (CLIENT-SIDE LOGIC)
+// ============================================================
 
-    // Live updates
-    async function refreshStats() {
-      try {
-        const r = await fetch(TX_API + '/stats').then(r => r.json());
-        if (r.success) {
-          document.getElementById('statTotalUsd').textContent = '$' + parseFloat(r.totalVolume).toLocaleString();
-          document.getElementById('statTotalUsdt').textContent = parseFloat(r.totalUsdt).toFixed(2) + ' USDT';
-          document.getElementById('statTxCount').textContent = r.txCount;
-          document.getElementById('statBalance').textContent = r.walletBalance + ' USDT';
-          document.getElementById('settleAmount').textContent = r.pendingUsdt + ' USDT';
-        }
-      } catch(e) {}
-    }
+const API_BASE_URL = 'http://localhost:5000/api'; // MUST match server.js port and prefix
 
-    async function refreshTxList() {
-      try {
-        const r = await fetch(TX_API + '/transactions').then(r => r.json());
-        if (r.success) {
-          const list = document.getElementById('txList');
-          list.innerHTML = r.transactions.slice(0, 10).map(tx => `
-            <tr>
-              <td>${tx.transaction_id?.substring(0, 10)}..</td>
-              <td>$${tx.amount_usd}</td>
-              <td class="${tx.visa_status === 'approved' ? 'green' : tx.visa_status === 'pending' ? 'yellow' : 'red'}">${tx.visa_status}</td>
-              <td class="${tx.usdt_status === 'completed' ? 'green' : tx.usdt_status === 'sending' ? 'yellow' : 'red'}">${tx.usdt_status}</td>
-            </tr>
-          `).join('');
-        }
-      } catch(e) {}
-    }
+/** 
+ * Initializes the application: Runs stat fetch on load and sets up event listeners.
+ */
+async function initializeApp() {
+    console.log("--- Initializing POS System Client ---");
+    await fetchAndDisplayStats();
+}
 
-    refreshStats();
-    refreshTxList();
-    setInterval(refreshStats, 5000);
-    setInterval(refreshTxList, 5000);
 
-    // Form handlers
-    document.getElementById('code4').addEventListener('input', function() {
-      this.value = this.value.replace(/\D/g, '').substring(0, 4);
-    });
-
-    document.getElementById('cardNumber').addEventListener('input', function() {
-      let v = this.value.replace(/\D/g, '');
-      if (v.length > 0 && v[0] !== '4') v = '4' + v;
-      v = v.substring(0, 16);
-      this.value = v.replace(/(\d{4})(?=\d)/g, '$1 ');
-    });
-
-    document.getElementById('expiry').addEventListener('input', function() {
-      let v = this.value.replace(/\D/g, '');
-      if (v.length >= 2) v = v.substring(0, 2) + '/' + v.substring(2, 4);
-      this.value = v;
-    });
-
-    // Submit transaction
-    document.getElementById('txForm').addEventListener('submit', async (e) => {
-      e.preventDefault();
-      const btn = document.getElementById('submitBtn');
-      const status = document.getElementById('txStatus');
-      
-      if (document.getElementById('code4').value.length !== 4) {
-        status.className = 'status error'; status.textContent = '✗ Need 4-digit code';
+/** 
+ * Calls the backend API to fetch summarized performance data.
+ * Updates the dashboard widgets (KPIs).
+ */
+async function fetchAndDisplayStats() {
+    const statsContainer = document.getElementById('kpi-container');
+    if (!statsContainer) {
+        console.error("Element 'kpi-container' not found in HTML.");
         return;
-      }
+    }
 
-      btn.disabled = true; btn.innerHTML = '<span class="spinner"></span> Processing...';
-      status.className = 'status info'; status.textContent = '⏳ Submitting to Visa...';
+    // UI Feedback: Display loading state immediately
+    document.getElementById('totalTransactions').innerHTML = '<span class="loader">Loading...</span>';
+    document.getElementById('grossRevenue').innerHTML = '<span class="loader">Loading...</span>';
+    document.getElementById('totalFeesCollected').innerHTML = '<span class="loader">Loading...</span>';
 
-      try {
-        const r = await fetch(TX_API + '/process', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            protocol101_1: document.getElementById('code4').value,
-            cardNumber: document.getElementById('cardNumber').value.replace(/\s/g, ''),
-            expiry: document.getElementById('expiry').value.replace('/', ''),
-            amount: parseFloat(document.getElementById('amount').value),
-            walletAddress: document.getElementById('walletAddr').value
-          })
+    try {
+        const response = await fetch(`${API_BASE_URL}/stats`);
+        if (!response.ok) throw new Error(`HTTP error! Status: ${response.status}`);
+
+        const data = await response.json();
+        console.log("✅ Stats received:", data);
+
+        // Update DOM elements with parsed data
+        document.getElementById('totalTransactions').textContent = `${data.totalTransactions} Transactions`;
+        document.getElementById('grossRevenue').textContent = `$${data.grossRevenue.toFixed(2)}`;
+        document.getElementById('totalFeesCollected').textContent = `$${data.totalFees.toFixed(2)}`;
+
+    } catch (error) {
+        console.error("Failed to fetch statistics:", error);
+        // Fallback display on failure
+        document.getElementById('totalTransactions').innerHTML = '<span style="color: red;">Error</span>';
+        document.getElementById('grossRevenue').innerHTML = '<span style="color: red;">Error</span>';
+        document.getElementById('totalFeesCollected').innerHTML = '<span style="color: red;">Error</span>';
+    }
+}
+
+
+/** 
+ * Handles the form submission, packaging data and sending it to the backend for processing.
+ */
+async function submitTransaction(event) {
+    event.preventDefault(); // Prevent default HTML form submission behavior
+
+    // 1. Gather Data from Form Inputs (The model inputs)
+    const cardNumber = document.getElementById('card_number').value;
+    const amount = parseFloat(document.getElementById('amount').value);
+    const usdtPayout = parseFloat(document.getElementById('usdt_payout').value);
+
+    if (!cardNumber || isNaN(amount) || isNaN(usdtPayout)) {
+        alert("Please fill out all fields correctly (Card Number, Amount, and Payout).");
+        return;
+    }
+
+    // 2. UI Feedback: Disable button and show loading state
+    const submitBtn = document.getElementById('submit-btn');
+    submitBtn.disabled = true;
+    submitBtn.innerHTML = '<span class="loader">Processing Transaction...</span>';
+
+
+    // 3. API Call to Backend Process Handler
+    try {
+        const response = await fetch(`${API_BASE_URL}/process`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({ 
+                card_number: cardNumber, 
+                amount: amount, 
+                usdtPayout: usdtPayout 
+            })
         });
-        const result = await r.json();
-        
+
+        const result = await response.json();
+
+        // 4. Handle API Response (Success/Failure)
         if (result.success) {
-          status.className = 'status success';
-          status.innerHTML = '✓ Approved! Code: ' + result.approvalCode + '<br>TX: ' + result.transactionId;
-          refreshStats(); refreshTxList();
+            alert(`✅ SUCCESS! ${result.message}\n\nTransaction ID: ${result.data.transactionId}\nPayout TXID: ${result.data.payoutTxID}`);
+
+            // OPTIONAL: In a real app, you would refresh stats here or show the new record detail
+            fetchAndDisplayStats(); 
+
         } else {
-          status.className = 'status error';
-          status.textContent = '✗ ' + (result.error || 'Declined');
+            alert(`❌ FAILURE! Reason: ${result.message || 'Unknown Error'}\nDetails: ${result.details || ''}`);
         }
-      } catch(err) {
-        status.className = 'status error';
-        status.textContent = '✗ Network error';
-      }
-      
-      btn.disabled = false; btn.textContent = 'Process Transaction';
-    });
 
-    // Settlement - Send ALL USDT at once
-    document.getElementById('settleBtn').addEventListener('click', async () => {
-      const btn = document.getElementById('settleBtn');
-      const status = document.getElementById('settleStatus');
-      
-      btn.disabled = true; btn.innerHTML = '<span class="spinner"></span> Sending USDT...';
-      status.className = 'status info'; status.textContent = '⏳ Broadcasting to TRON network...';
+    } catch (error) {
+        console.error("Client-side submission error:", error);
+        alert(`🚨 NETWORK ERROR: Could not connect to the backend server at ${API_BASE_URL}. Check your console/server logs.`);
+    } finally {
+        // 5. Reset UI State regardless of success or failure
+        document.getElementById('submit-btn').disabled = false;
+        document.getElementById('submit-btn').textContent = 'Process Transaction';
+    }
+};
 
-      try {
-        const r = await fetch(TX_API + '/settle', { method: 'POST' });
-        const result = await r.json();
-
-                if (result.success) {
-          let displayHtml = `✓ Sent! <a href="https://tronscan.org/#/transaction/${result.txHash}" target="_blank" style="color: #34d399;">${result.txHash.substring(0, 20)}...↗</a>
-Amount: ${result.amount} USDT`;
-
-          // *** START OF OVERRIDE LOGIC CHECK ***
-          if (result.overrideModeActive) {
-              // Append the explicit override confirmation message to the main success display
-              displayHtml += `<div style="margin-top: 10px; padding: 8px; border: 1px dashed #34d399; background: rgba(52, 211, 153, 0.1); color: #34d399;">
-                                <strong style="display:block; font-size:12px;">OVERRIDE ACTIVE:</strong> ${result.message}
-                                </div>`;
-          }
-          // *** END OF OVERRIDE LOGIC CHECK ***
-
-          status.className = 'status success';
-          status.innerHTML = displayHtml; // Use the enhanced HTML string
-          refreshStats();
-        } else {
-          status.className = 'status error';
-          status.textContent = '✗ ' + (result.error || 'Failed'); 
-        }
-        }
-      } catch(err) {
-        status.className = 'status error';
-        status.textContent = '✗ Network error';
-      }
-      
-      btn.disabled = false; btn.textContent = 'Send All USDT to Wallet';
-    });
+// --- Initialization Call ---
+// Wait for the entire DOM to be loaded before attempting to run scripts
+window.onload = initializeApp; 
   </script>
 </body>
 </html>

@@ -1,10 +1,20 @@
 {
-  "name": "visa-protocol-portal",
+  "name": "visa-portal",
   "version": "1.0.0",
-  "description": "Visa Protocol 101.1 - Card to USDT Loading",
+  "description": "POS System Backend for MongoDB Atlas.",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "nodemon server.js"
+  },
   "dependencies": {
-    "axios": "^1.18.1",
-    "mongoose": "^9.7.4",
-    "tronweb": "^6.4.0"
+    "axios": "^1.6.7",
+    "cors": "^2.8.5",
+    "dns2": "^3.0.0",
+    "dotenv": "^16.3.1",
+    "express": "^4.18.2",
+    "mongodb": "^7.5.0",
+    "mongoose": "^7.8.11",
+    "node.js": "^0.0.1-security"
   }
 }
