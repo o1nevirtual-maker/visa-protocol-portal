@@ -171,10 +171,14 @@
                     });
 
                     let result;
+                    let responseText;
+
                     try {
                         result = await response.json();
                     } catch (e) {
-                        result = { error_text: await response.text() };
+                        // Read the body once
+                        responseText = await response.text();
+                        result = { error_text: responseText };
                     }
 
                     // --- RESPONSE HANDLING ---
