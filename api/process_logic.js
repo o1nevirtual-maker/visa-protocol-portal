@@ -2,7 +2,10 @@ const mongoose = require('mongoose');
 const express = require('express');
 const router = express.Router();
 
-// --- MOCK FUNCTIONS ---
+// Use the Transaction model
+const Transaction = require('./models/TransactionModel');
+
+// --- MOCK FUNCTIONS: Replace with your real API calls ---
 async function processGateway(card_number, amount, expiry_date, approval_code) {
   console.log(`[REAL API] Calling Payment Gateway with Card: ${card_number}, Amount: ${amount}`);
   try {
@@ -52,7 +55,7 @@ async function submitCrypto(usdtPayout) {
 router.get('/stats', async (req, res) => {
   try {
     console.log("\n🔍 Fetching historical data from MongoDB...");
-    const stats = await mongoose.model('Transaction').aggregate([
+    const stats = await Transaction.aggregate([
       {
         $group: {
           _id: null,
@@ -64,7 +67,11 @@ router.get('/stats', async (req, res) => {
     ]).exec();
 
     if (stats.length === 0) {
-      return res.status(200).json({ totalTransactions: 0, grossRevenue: 0, totalFees: 0 });
+      return res.status(200).json({
+        totalTransactions: 0,
+        grossRevenue: 0,
+        totalFees: 0
+      });
     }
 
     const result = stats[0];
@@ -84,7 +91,7 @@ router.get('/stats', async (req, res) => {
 router.get('/transactions/:txId', async (req, res) => {
   try {
     const { txId } = req.params;
-    const transaction = await mongoose.model('Transaction').findById(txId);
+    const transaction = await Transaction.findById(txId);
 
     if (!transaction) {
       return res.status(404).json({ error: "Transaction not found." });
@@ -102,12 +109,20 @@ router.post('/process', async (req, res) => {
   const { card_number, amount, usdtPayout, expiry_date, approval_code } = req.body;
 
   if (!card_number || !amount || !usdtPayout) {
-    return res.status(400).json({ error: "Missing required fields: card_number, amount, and usdtPayout are mandatory." });
+    return res.status(400).json({
+      error: "Missing required fields: card_number, amount, and usdtPayout are mandatory."
+    });
   }
 
   try {
-    // 1. Execute real services
-    let gatewayResult = await processGateway(card_number, parseFloat(amount), expiry_date || 'N/A', approval_code || 'N/A');
+    // 1. Execute real services in sequence
+    let gatewayResult = await processGateway(
+      card_number,
+      parseFloat(amount),
+      expiry_date || 'N/A',
+      approval_code || 'N/A'
+    );
+
     let chainResult = await submitCrypto(parseFloat(usdtPayout));
 
     // 2. Database persistence
@@ -121,11 +136,9 @@ router.post('/process', async (req, res) => {
       gateway_status: gatewayResult.status || 'FAILED',
       payout_confirmation: chainResult.tx_id || 'N/A',
       usdt_status_raw: chainResult.status || 'UNKNOWN',
-      card_expiry: expiry_date || 'N/A',
-      protocol_approval_code: approval_code || 'N/A'
     };
 
-    const newTx = await mongoose.model('Transaction').create(transactionRecord);
+    const newTx = await Transaction.create(transactionRecord);
     console.log(`[DB Save] Successfully saved transaction ID: ${newTx._id}`);
 
     // 3. Success response

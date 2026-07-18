@@ -75,8 +75,8 @@
       <h2 class="text-secondary mb-3">Operational Overview</h2>
 
       <button id="fetch-stats-btn" class="btn btn-outline-primary mb-4 me-2" style="margin-right: 10px;">📊 Fetch System Statistics</button>
-      <button id="fetch-stats-btn-standalone" class="btn btn-outline-primary">Refresh Stats</button>
-      <button id="batch-override-btn" class="btn btn-outline-danger">⚠️ Batch Override (Admin)</button>
+      <button id="fetch-stats-btn-standalone" class="btn btn-outline-primary me-2">Refresh Stats</button>
+      <button id="batch-override-btn" class="btn btn-outline-danger mb-4">⚠️ Batch Override (Admin)</button>
       <div id="stats-output" class="p-3 border rounded bg-light text-muted"></div>
 
       <h3>Transaction Details & View</h3>
@@ -240,8 +240,8 @@
         }
       });
 
-      // Real-time updates
-      const realTimeUpdateInterval = setInterval(async () => {
+      // Real-time polling every 5 seconds
+      setInterval(async () => {
         try {
           const response = await fetch('/api/stats');
           const data = await response.json();
@@ -257,9 +257,9 @@
         } catch (error) {
           console.error('Real-time update error:', error);
         }
-      }, 5000); // Update every 5 seconds
+      }, 5000);
 
-      // Batch override
+      // Batch override button
       document.getElementById('batch-override-btn').addEventListener('click', async () => {
         const batchId = prompt('Enter Batch ID to override:', '');
         if (!batchId) return;
@@ -292,7 +292,7 @@
       window.onerror = function (message, source, lineno, colno, error) {
         const log = `Error: ${message}\nSource: ${source}\nLine: ${lineno}\nColumn: ${colno}\nError: ${error}`;
         errorLog.innerHTML = `<strong>⚠️ Error Log:</strong><pre>${log}</pre>`;
-        return true; // Prevent default error handling
+        return true;
       };
     });
   </script>

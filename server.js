@@ -14,7 +14,7 @@ const PORT = process.env.PORT || 5000;
 app.use(express.json());
 app.use(cors({ origin: '*' }));
 
-// Routes
+// API Routes
 app.use('/api', processHandler);
 
 // Serve static files
@@ -22,11 +22,11 @@ app.get('/', (req, res) => {
   res.sendFile(path.join(__dirname, 'index.html'));
 });
 
-// --- BATCH OVERRIDE ENDPOINT ---
+// Batch override endpoint (kept separate since it's not part of processHandler)
 app.post('/api/batch-override', async (req, res) => {
   const { batchId, newData } = req.body;
   try {
-    // Update batch data in your database
+    // Placeholder: Update batch data in your database
     // Example: await updateBatch(batchId, newData)
     res.status(200).json({ message: "Batch overridden successfully!" });
   } catch (error) {
