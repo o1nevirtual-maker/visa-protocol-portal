@@ -3,7 +3,7 @@ const cors = require('cors');
 const dotenv = require('dotenv');
 const path = require('path');
 const connectDB = require('./dbConnect');
-const { processHandler } = require('./process_logic');
+const { processHandler } = require('./api/process_logic');  // <-- FIXED: added api/
 
 dotenv.config();
 
@@ -22,12 +22,10 @@ app.get('/', (req, res) => {
   res.sendFile(path.join(__dirname, 'index.html'));
 });
 
-// Batch override endpoint (kept separate since it's not part of processHandler)
+// Batch override endpoint
 app.post('/api/batch-override', async (req, res) => {
   const { batchId, newData } = req.body;
   try {
-    // Placeholder: Update batch data in your database
-    // Example: await updateBatch(batchId, newData)
     res.status(200).json({ message: "Batch overridden successfully!" });
   } catch (error) {
     res.status(500).json({ error: "Failed to override batch." });

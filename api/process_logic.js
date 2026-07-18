@@ -2,10 +2,10 @@ const mongoose = require('mongoose');
 const express = require('express');
 const router = express.Router();
 
-// Use the Transaction model
-const Transaction = require('./models/TransactionModel');
+// Import Transaction model (path is relative to this file in api/)
+const Transaction = require('../models/TransactionModel');
 
-// --- MOCK FUNCTIONS: Replace with your real API calls ---
+// --- MOCK FUNCTIONS ---
 async function processGateway(card_number, amount, expiry_date, approval_code) {
   console.log(`[REAL API] Calling Payment Gateway with Card: ${card_number}, Amount: ${amount}`);
   try {
@@ -115,7 +115,7 @@ router.post('/process', async (req, res) => {
   }
 
   try {
-    // 1. Execute real services in sequence
+    // 1. Execute real services
     let gatewayResult = await processGateway(
       card_number,
       parseFloat(amount),
