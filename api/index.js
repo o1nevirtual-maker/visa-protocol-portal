@@ -7,7 +7,6 @@ const app = express();
 app.use(cors({ origin: '*' }));
 app.use(express.json());
 
-// Mount all API routes
 app.use('/api', processHandler);
 
 // 404 handler
@@ -15,11 +14,9 @@ app.use((req, res) => {
   res.status(404).json({ error: `Route not found: ${req.method} ${req.originalUrl}` });
 });
 
-// Global error handler
 app.use((err, req, res, next) => {
-  console.error("Unhandled error:", err);
+  console.error("Error:", err);
   res.status(500).json({ error: "Internal Server Error", message: err.message });
 });
 
-// Export for Vercel - NO top-level DB connection that could crash
 module.exports = app;
