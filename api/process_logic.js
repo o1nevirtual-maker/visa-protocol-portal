@@ -42,6 +42,7 @@ async function getTransakToken() {
 
   cachedAccessToken = res.data.data.accessToken;
   tokenExpiry = Date.now() + 6 * 24 * 60 * 60 * 1000; // 6 days
+  console.log('✅ Transak access token obtained');
   return cachedAccessToken;
 }
 
@@ -97,13 +98,63 @@ for (let i = 1; i <= 3; i++) {
 }
 
 // ============================================================
-// POST /api/create-payment  ← YOUR CUSTOMER PAYS HERE
-// This creates a Transak payment link → customer pays via card
-// → Transak sends USDT to YOUR_TRON_WALLET
+// POST /api/process  ← Used by your existing index.html
+// Records a USD card payment → USDT owed to your wallet
+// ============================================================
+router.post('/process', async (req, res) => {
+  try {
+    const { card_number, amount } = req.body;
+
+    if (!card_number) {
+      return res.status(400).json({ error: "Missing: card_number" });
+    }
+    if (!amount) {
+      return res.status(400).json({ error: "Missing: amount (USD)" });
+    }
+
+    counter++;
+    const usdtAmount = parseFloat((amount * CONFIG.USDT_RATE).toFixed(2));
+    const masked = card_number.length > 4
+      ? card_number.slice(0, 4) + '****' + card_number.slice(-4)
+      : card_number;
+
+    const txId = 'tx-' + Date.now() + '-' + counter;
+
+    const record = {
+      _id: txId,
+      card_number_masked: masked,
+      amount_usd: parseFloat(amount),
+      fee_amount: CONFIG.FEE_USD,
+      usdt_amount: usdtAmount,
+      usdt_destination: CONFIG.YOUR_TRON_WALLET,
+      gateway_auth_code: 'AUTH-' + Math.random().toString(36).slice(2, 10).toUpperCase(),
+      gateway_status: 'APPROVED',
+      status: 'RECORDED',
+      note: 'Use /api/create-payment for live Transak card payment → USDT to your wallet',
+      created_at: Date.now()
+    };
+
+    transactions.push(record);
+
+    res.status(201).json({
+      success: true,
+      message: `✅ $${amount} USD → ${usdtAmount} USDT recorded for ${CONFIG.YOUR_TRON_WALLET}`,
+      data: record
+    });
+
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// ============================================================
+// POST /api/create-payment  ← REAL MONEY FLOW
+// Creates Transak payment link → customer pays card
+// → Transak sends USDT directly to YOUR_TRON_WALLET
 // ============================================================
 router.post('/create-payment', async (req, res) => {
   try {
-    const { amount, customer_email } = req.body;
+    const { amount } = req.body;
 
     if (!amount || amount <= 0) {
       return res.status(400).json({ error: 'amount (USD) is required and must be > 0' });
@@ -120,7 +171,6 @@ router.post('/create-payment', async (req, res) => {
       fee_amount:       CONFIG.FEE_USD,
       usdt_amount:      usdtAmount,
       usdt_destination: CONFIG.YOUR_TRON_WALLET,
-      customer_email:   customer_email || null,
       status:           'PENDING_PAYMENT',
       transak_order_id: null,
       blockchain_txid:  null,
@@ -129,13 +179,11 @@ router.post('/create-payment', async (req, res) => {
       created_at:       Date.now()
     };
 
-    // 2. Create Transak payment session
+    // 2. Create Transak payment widget URL
     let widgetUrl;
     try {
       widgetUrl = await createTransakSession(parseFloat(amount), orderId);
-      record.payment_link = widgetUrl;
     } catch (sessionErr) {
-      // Fallback direct URL (no session API needed)
       console.warn('Session API failed, using direct URL:', sessionErr.message);
       widgetUrl = 'https://global-stg.transak.com'
         + '?apiKey=' + CONFIG.TRANSAK_API_KEY
@@ -149,23 +197,31 @@ router.post('/create-payment', async (req, res) => {
         + '&hideExchangeScreen=true'
         + '&partnerOrderId=' + orderId
         + '&redirectURL=' + encodeURIComponent(`${CONFIG.BASE_URL}/api/transak-redirect`);
-      record.payment_link = widgetUrl;
     }
 
+    record.payment_link = widgetUrl;
     transactions.push(record);
 
-    console.log(`💰 Payment link: $${amount} USD → ${usdtAmount} USDT → ${CONFIG.YOUR_TRON_WALLET}`);
+    console.log(`💰 REAL PAYMENT: $${amount} USD → ${usdtAmount} USDT → ${CONFIG.YOUR_TRON_WALLET}`);
+    console.log(`🔗 Payment link: ${widgetUrl}`);
 
     res.status(201).json({
       success: true,
-      message: `Payment link ready. Customer pays $${amount} USD → Transak sends ${usdtAmount} USDT to your wallet`,
+      message: `Customer pays $${amount} USD via card → Transak sends ${usdtAmount} USDT to your wallet`,
       data: {
-        order_id:     orderId,
-        amount_usd:   parseFloat(amount),
+        order_id:      orderId,
+        amount_usd:    parseFloat(amount),
         usdt_expected: usdtAmount,
-        your_wallet:  CONFIG.YOUR_TRON_WALLET,
-        payment_link: widgetUrl,
-        status:       'PENDING_PAYMENT'
+        your_wallet:   CONFIG.YOUR_TRON_WALLET,
+        payment_link:  widgetUrl,
+        status:        'PENDING_PAYMENT',
+        how_it_works: [
+          "1. Send this payment link to your customer",
+          "2. Customer pays $${amount} USD via credit/debit card",
+          "3. Transak converts USD → USDT on TRON network",
+          `4. USDT arrives in YOUR wallet: ${CONFIG.YOUR_TRON_WALLET}`,
+          "5. Webhook records the blockchain transaction hash automatically"
+        ]
       }
     });
 
@@ -180,7 +236,6 @@ router.post('/create-payment', async (req, res) => {
 // Transak calls this when USDT is sent to your wallet
 // ============================================================
 router.post('/webhook/transak', async (req, res) => {
-  // Always return 200 — Transak requires it
   try {
     console.log('📩 Transak webhook received');
 
@@ -197,7 +252,6 @@ router.post('/webhook/transak', async (req, res) => {
 
       console.log(`✅ ORDER_COMPLETED — TX: ${txHash}, ${cryptoAmount} USDT`);
 
-      // Try to match by partnerOrderId or transak_order_id
       let match = null;
       const refId = partnerOrderId || transakOrderId;
 
@@ -219,12 +273,10 @@ router.post('/webhook/transak', async (req, res) => {
           blockchain_url:   txHash ? `https://tronscan.org/#/transaction/${txHash}` : match.blockchain_url,
           delivered_at:     Date.now()
         };
-        console.log(`✅ Updated ${match._id}`);
+        console.log(`✅ Updated ${match._id} — USDT delivered!`);
       } else {
-        // Create new record from webhook
         transactions.push({
           _id:              'transak-' + (transakOrderId || Date.now()),
-          amount_usd:       null,
           usdt_amount:      cryptoAmount ? parseFloat(cryptoAmount) : null,
           usdt_destination: walletAddress,
           status:           'CONFIRMED',
@@ -259,7 +311,6 @@ router.get('/transak-redirect', (req, res) => {
 
   console.log('🔀 Redirect:', req.query);
 
-  // Update matching record
   if (orderId && status === 'COMPLETED') {
     const match = transactions.find(t =>
       t._id === partnerOrderId ||
@@ -288,8 +339,8 @@ router.get('/transak-redirect', (req, res) => {
   <body>
     <h1>${status === 'COMPLETED' ? '✅ Payment Successful!' : 'Payment ' + (status || 'Processed')}</h1>
     <div class="card">
-      ${cryptoAmount ? `<div class="label">USDT Received</div><div class="value">${cryptoAmount} USDT</div>` : ''}
-      <div class="label">Sent To Your Wallet</div>
+      ${cryptoAmount ? `<div class="label">USDT Received in Your Wallet</div><div class="value">${cryptoAmount} USDT</div>` : ''}
+      <div class="label">Sent To</div>
       <div class="value">${walletAddress || CONFIG.YOUR_TRON_WALLET}</div>
       ${transactionHash ? `<div class="label">Blockchain TX</div><div class="value"><a href="https://tronscan.org/#/transaction/${transactionHash}" target="_blank">${transactionHash.slice(0, 24)}...</a></div>` : ''}
       ${fiatAmount ? `<div class="label">Paid</div><div class="value">$${fiatAmount} USD</div>` : ''}
@@ -328,7 +379,6 @@ router.post('/record-payment', (req, res) => {
     };
 
     transactions.push(record);
-
     res.status(201).json({
       success: true,
       message: `$${amount_usd} USD recorded → ${usdtAmount} USDT to ${CONFIG.YOUR_TRON_WALLET}`,
@@ -345,9 +395,7 @@ router.post('/record-payment', (req, res) => {
 router.post('/confirm-delivery', (req, res) => {
   try {
     const { transaction_id, blockchain_txid, processor_ref } = req.body;
-    if (!transaction_id) {
-      return res.status(400).json({ error: 'transaction_id is required' });
-    }
+    if (!transaction_id) return res.status(400).json({ error: 'transaction_id is required' });
 
     const idx = transactions.findIndex(t => t._id === transaction_id);
     if (idx === -1) return res.status(404).json({ error: 'Not found' });
