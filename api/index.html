@@ -108,20 +108,17 @@
       const usdtPayoutInput = document.getElementById('usdt_payout');
       const protocolSelector = document.getElementById('protocol_selector');
 
+      // --- PAYOUT CALCULATION ---
       function calculatePayout() {
         const amount = parseFloat(amountInput.value) || 0;
         const protocol = protocolSelector.value;
-        let calculatedFeeUSD = 0;
         let usdtPayoutValue = 0;
 
         if (protocol === 'DEFAULT') {
-          calculatedFeeUSD = 1.50;
-          usdtPayoutValue = amount - calculatedFeeUSD;
+          usdtPayoutValue = amount - 1.50;
         } else if (protocol === 'PROTOCOL_101.1') {
-          calculatedFeeUSD = 2.00;
           usdtPayoutValue = amount * 0.98;
         } else {
-          calculatedFeeUSD = 0;
           usdtPayoutValue = amount;
         }
 
@@ -131,6 +128,7 @@
       amountInput.addEventListener('input', calculatePayout);
       protocolSelector.addEventListener('change', calculatePayout);
 
+      // --- SUBMIT TRANSACTION (form) ---
       form.addEventListener('submit', async function (e) {
         e.preventDefault();
 
@@ -140,6 +138,62 @@
         const expiryDate = document.getElementById('expiry_date').value.trim();
         const approvalCode = document.getElementById('approval_code').value.trim();
 
+        // Use the new handleTransactionUI function
+        await handleTransactionUI({
+          card_number: cardNumber,
+          amount: amountUsdInput,
+          usdtPayout: usdtPayoutValue,
+          expiry_date: expiryDate,
+          approval_code: approvalCode
+        });
+      });
+
+      // --- FETCH STATS (UPDATED VERSION) ---
+      async function fetchStats() {
+        statusMessage.textContent = 'Fetching operational stats...';
+        statusMessage.className = 'alert alert-info text-center mb-4';
+        statsOutput.innerHTML = '<div class="text-muted">Loading statistics...</div>';
+
+        try {
+          // Use relative URL (works with same-origin deployment)
+          const response = await fetch('/api/stats');
+
+          // Verify HTTP success status
+          if (!response.ok) {
+            const errorText = await response.text();
+            throw new Error(`Server status ${response.status}: ${errorText.substring(0, 50)}`);
+          }
+
+          // Validate JSON content header
+          const contentType = response.headers.get("content-type");
+          if (!contentType || !contentType.includes("application/json")) {
+            const rawText = await response.text();
+            throw new Error(`Expected JSON response but received raw text/HTML`);
+          }
+
+          const data = await response.json();
+
+          // Update UI with formatted stats
+          statusMessage.textContent = 'Stats loaded successfully!';
+          statusMessage.className = 'alert alert-success text-center mb-4';
+          statsOutput.innerHTML = `
+            <div class="row">
+              <div class="col-md-4"><p><strong>Total Transactions:</strong> ${data.totalTransactions}</p></div>
+              <div class="col-md-4"><p><strong>Gross Revenue (USD):</strong> $${parseFloat(data.grossRevenue || 0).toFixed(2)}</p></div>
+              <div class="col-md-4"><p><strong>Total Fees Collected (USD):</strong> $${parseFloat(data.totalFees || 0).toFixed(2)}</p></div>
+            </div>
+          `;
+
+        } catch (error) {
+          console.error('Error fetching stats:', error);
+          statusMessage.textContent = `Error: ${error.message}`;
+          statusMessage.className = 'alert alert-danger text-center mb-4';
+          statsOutput.innerHTML = '<div class="text-danger">Failed to load statistics.</div>';
+        }
+      }
+
+      // --- HANDLE TRANSACTION UI (UPDATED VERSION with error tracker) ---
+      async function handleTransactionUI(txData) {
         statusMessage.textContent = 'Processing transaction...';
         statusMessage.className = 'alert alert-info text-center mb-4';
         detailsOutput.innerHTML = '<p class="text-muted">Connecting to services...</p>';
@@ -147,17 +201,16 @@
         try {
           const response = await fetch('/api/process', {
             method: 'POST',
-            headers: {
-              'Content-Type': 'application/json'
-            },
-            body: JSON.stringify({
-              card_number: cardNumber,
-              amount: amountUsdInput,
-              usdtPayout: usdtPayoutValue,
-              expiry_date: expiryDate,
-              approval_code: approvalCode
-            })
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(txData)
           });
+
+          // Check if response is valid JSON
+          const contentType = response.headers.get("content-type");
+          if (!contentType || !contentType.includes("application/json")) {
+            const rawText = await response.text();
+            throw new Error(`Expected JSON but got HTML/text: ${rawText.substring(0, 100)}`);
+          }
 
           const result = await response.json();
 
@@ -183,38 +236,37 @@
             statusMessage.className = 'alert alert-danger text-center mb-4';
             detailsOutput.innerHTML = `<div class="alert alert-danger p-3"><strong style="color: red;">❌ Error Detail:</strong> ${result?.error || 'Unknown error'}</div>`;
           }
-        } catch (networkError) {
+        } catch (error) {
+          // --- PROCESS_LOGIC.JS ERROR TRACKER ENGAGED ---
+          console.error('Caught process_logic error in index.html:', error);
+
+          // Extract the exact line where it crashed in process_logic.js
+          let errorLocation = "Unknown Location";
+          if (error.stack) {
+            const stackLines = error.stack.split('\n');
+            const logicFileTrace = stackLines.find(line => line.includes('process_logic.js'));
+            errorLocation = logicFileTrace ? logicFileTrace.trim() : stackLines[1]?.trim() || "Unknown Line";
+          }
+
           statusMessage.textContent = 'CRITICAL';
           statusMessage.className = 'alert alert-danger text-center mb-4';
-          console.error("Client-Side Network Failure:", networkError);
-          detailsOutput.innerHTML = `<div class="alert alert-danger p-3"><strong style="color: red;">🌐 Client Side Connection Error:</strong> ${networkError.message}</div>`;
-        }
-      });
 
-      async function fetchStats() {
-        statusMessage.textContent = 'Fetching operational stats...';
-        statusMessage.className = 'alert alert-info text-center mb-4';
-        statsOutput.innerHTML = '<div class="text-muted">Loading statistics...</div>';
-
-        try {
-          const response = await fetch('/api/stats');
-          const data = await response.json();
-
-          let statsHtml = `
-            <div class="row">
-              <div class="col-md-4"><p><strong>Total Transactions:</strong> ${data.totalTransactions}</p></div>
-              <div class="col-md-4"><p><strong>Gross Revenue (USD):</strong> $${parseFloat(data.grossRevenue).toFixed(2)}</p></div>
-              <div class="col-md-4"><p><strong>Total Fees Collected (USD):</strong> $${parseFloat(data.totalFees).toFixed(2)}</p></div>
+          detailsOutput.innerHTML = `
+            <div class="card border-danger text-danger p-3 bg-light">
+              <h5 class="card-title font-weight-bold">🔍 Transaction Error Tracker</h5>
+              <p class="mb-1"><strong>Error Message:</strong> ${error.message}</p>
+              <p class="mb-1"><strong>Location in Script:</strong> <code class="text-white bg-danger px-2 py-0.5 rounded">${errorLocation}</code></p>
+              <hr class="my-2">
+              <details>
+                <summary class="cursor-pointer font-weight-bold text-secondary text-sm">Click to view full execution path</summary>
+                <pre class="mt-2 text-muted small" style="white-space: pre-wrap; overflow-x: auto; background: #f8f9fa; padding: 10px;">${error.stack || 'No trace available.'}</pre>
+              </details>
             </div>
           `;
-          statsOutput.innerHTML = statsHtml;
-        } catch (error) {
-          statusMessage.textContent = 'WARNING';
-          statusMessage.className = 'alert alert-warning text-center mb-4';
-          statsOutput.innerHTML = `<div class="text-danger">Error fetching stats: ${error.message || error}</div>`;
         }
       }
 
+      // --- EVENT LISTENERS ---
       document.getElementById('fetch-stats-btn').addEventListener('click', fetchStats);
       document.getElementById('fetch-stats-btn-standalone').addEventListener('click', fetchStats);
 
@@ -240,25 +292,6 @@
         }
       });
 
-      // Real-time polling every 5 seconds
-      setInterval(async () => {
-        try {
-          const response = await fetch('/api/stats');
-          const data = await response.json();
-
-          let statsHtml = `
-            <div class="row">
-              <div class="col-md-4"><p><strong>Total Transactions:</strong> ${data.totalTransactions}</p></div>
-              <div class="col-md-4"><p><strong>Gross Revenue (USD):</strong> $${parseFloat(data.grossRevenue).toFixed(2)}</p></div>
-              <div class="col-md-4"><p><strong>Total Fees Collected (USD):</strong> $${parseFloat(data.totalFees).toFixed(2)}</p></div>
-            </div>
-          `;
-          statsOutput.innerHTML = statsHtml;
-        } catch (error) {
-          console.error('Real-time update error:', error);
-        }
-      }, 5000);
-
       // Batch override button
       document.getElementById('batch-override-btn').addEventListener('click', async () => {
         const batchId = prompt('Enter Batch ID to override:', '');
@@ -270,12 +303,9 @@
         try {
           const response = await fetch('/api/batch-override', {
             method: 'POST',
-            headers: {
-              'Content-Type': 'application/json'
-            },
+            headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ batchId, newData })
           });
-
           const result = await response.json();
           alert(result.message);
         } catch (error) {
