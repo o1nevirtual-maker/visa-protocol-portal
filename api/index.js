@@ -8,7 +8,7 @@ const app = express();
 app.use(cors({ origin: '*' }));
 app.use(express.json());
 
-// Mount all API routes 
+// Mount all API routes
 app.use('/api', processHandler);
 
 // 404 handler
@@ -22,7 +22,7 @@ app.use((err, req, res, next) => {
   res.status(500).json({ error: "Internal Server Error", message: err.message });
 });
 
-// Connect to DB (non-blocking)
+// Connect to DB (non-blocking - won't crash if DB is unavailable)
 connectDB();
 
 // Export for Vercel

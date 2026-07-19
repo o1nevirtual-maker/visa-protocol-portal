@@ -100,9 +100,8 @@
 
   <script>
     document.addEventListener('DOMContentLoaded', function () {
-      // Auto-detect the API base URL based on where the page is served
       const API_BASE = window.location.origin;
-      
+
       const form = document.getElementById('transaction-form');
       const statusMessage = document.getElementById('status-message');
       const detailsOutput = document.getElementById('transaction-details');
@@ -130,7 +129,6 @@
       amountInput.addEventListener('input', calculatePayout);
       protocolSelector.addEventListener('change', calculatePayout);
 
-      // --- FETCH STATS ---
       async function fetchStats() {
         statusMessage.textContent = 'Fetching operational stats...';
         statusMessage.className = 'alert alert-info text-center mb-4';
@@ -172,7 +170,6 @@
         }
       }
 
-      // --- HANDLE TRANSACTION UI ---
       async function handleTransactionUI(txData) {
         statusMessage.textContent = 'Processing transaction...';
         statusMessage.className = 'alert alert-info text-center mb-4';
@@ -241,7 +238,6 @@
         }
       }
 
-      // --- EVENT LISTENERS ---
       form.addEventListener('submit', async function (e) {
         e.preventDefault();
 
@@ -299,7 +295,6 @@
         }
       });
 
-      // Error log
       const errorLog = document.createElement('div');
       errorLog.id = 'error-log';
       errorLog.className = 'mt-4 p-3 border rounded bg-light';
