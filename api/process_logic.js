@@ -1,12 +1,13 @@
 const mongoose = require('mongoose');
 const express = require('express');
 const router = express.Router();
+const { connectDB, isDBConnected } = require('./dbConnect');
 
 let Transaction;
 try {
   Transaction = require('../models/TransactionModel');
 } catch (e) {
-  console.warn("TransactionModel not loaded yet");
+  console.warn("TransactionModel not loaded");
 }
 
 // --- MOCK FUNCTIONS ---
@@ -28,36 +29,26 @@ async function submitCrypto(usdtPayout) {
   };
 }
 
-// Helper to check DB connection status
-function isDBConnected() {
-  return mongoose.connection.readyState === 1;
+// Returns mock stats every time (no DB dependency)
+function getMockStats() {
+  return {
+    status: "active (mock mode)",
+    uptime: process.uptime(),
+    timestamp: Date.now(),
+    totalTransactions: 5,
+    grossRevenue: 1250.00,
+    totalFees: 18.75
+  };
 }
 
 // --- GET /api/stats ---
 router.get('/stats', async (req, res) => {
   try {
-    // If no DB connection, return mock data immediately (no timeout)
-    if (!isDBConnected()) {
-      return res.json({
-        status: "active (mock mode - no DB)",
-        uptime: process.uptime(),
-        timestamp: Date.now(),
-        totalTransactions: 5,
-        grossRevenue: 1250.00,
-        totalFees: 18.75
-      });
-    }
+    // Always return something - never let this endpoint crash
+    const connected = isDBConnected();
 
-    // Check if Transaction model is loaded
-    if (!Transaction) {
-      return res.json({
-        status: "active (mock mode - no model)",
-        uptime: process.uptime(),
-        timestamp: Date.now(),
-        totalTransactions: 5,
-        grossRevenue: 1250.00,
-        totalFees: 18.75
-      });
+    if (!connected || !Transaction) {
+      return res.json(getMockStats());
     }
 
     const stats = await Transaction.aggregate([
@@ -65,14 +56,7 @@ router.get('/stats', async (req, res) => {
     ]).exec();
 
     if (!stats || stats.length === 0) {
-      return res.json({
-        status: "active",
-        uptime: process.uptime(),
-        timestamp: Date.now(),
-        totalTransactions: 0,
-        grossRevenue: 0,
-        totalFees: 0
-      });
+      return res.json(getMockStats());
     }
 
     res.json({
@@ -84,16 +68,8 @@ router.get('/stats', async (req, res) => {
       totalFees: parseFloat(stats[0].totalFeesCollected.toFixed(2))
     });
   } catch (error) {
-    console.error("Backend stats crash:", error);
-    // Return mock data even on error
-    return res.json({
-      status: "active (error fallback)",
-      uptime: process.uptime(),
-      timestamp: Date.now(),
-      totalTransactions: 5,
-      grossRevenue: 1250.00,
-      totalFees: 18.75
-    });
+    console.error("Stats error:", error.message);
+    return res.json(getMockStats());
   }
 });
 
@@ -101,15 +77,8 @@ router.get('/stats', async (req, res) => {
 router.get('/transactions/:txId', async (req, res) => {
   try {
     if (!isDBConnected() || !Transaction) {
-      return res.json({
-        note: "Database not connected. Showing mock data.",
-        txId: req.params.txId,
-        status: "mock",
-        amount: 100.00,
-        fee: 1.50
-      });
+      return res.json({ note: "Mock mode", txId: req.params.txId, amount: 100.00, fee: 1.50 });
     }
-
     const tx = await Transaction.findById(req.params.txId);
     if (!tx) return res.status(404).json({ error: "Transaction not found." });
     res.json(tx);
@@ -124,15 +93,17 @@ router.post('/process', async (req, res) => {
     const { card_number, amount, usdtPayout, expiry_date, approval_code } = req.body;
 
     if (!card_number || !amount || !usdtPayout) {
-      return res.status(400).json({ error: "Missing required fields: card_number, amount, usdtPayout" });
+      return res.status(400).json({ error: "Missing required fields" });
     }
 
     const gatewayResult = await processGateway(card_number, parseFloat(amount), expiry_date, approval_code);
     const chainResult = await submitCrypto(parseFloat(usdtPayout));
 
+    const maskedCard = card_number.length > 4 ? card_number.slice(0, 4) + '****' + card_number.slice(-4) : card_number;
+
     let savedTx = {
       _id: 'MOCK-' + Date.now(),
-      card_number_masked: card_number.slice(0, 4) + '****' + card_number.slice(-4),
+      card_number_masked: maskedCard,
       amount_usd: parseFloat(amount),
       fee_amount: 1.50,
       usdt_amount: parseFloat(usdtPayout),
@@ -142,11 +113,10 @@ router.post('/process', async (req, res) => {
       usdt_status_raw: chainResult.status
     };
 
-    // Try saving to DB if connected
     if (isDBConnected() && Transaction) {
       try {
         savedTx = await Transaction.create({
-          card_number_masked: card_number.slice(0, 4) + '****' + card_number.slice(-4),
+          card_number_masked: maskedCard,
           amount_usd: parseFloat(amount),
           fee_amount: 1.50,
           usdt_amount: parseFloat(usdtPayout),
@@ -171,7 +141,7 @@ router.post('/process', async (req, res) => {
       }
     });
   } catch (error) {
-    console.error("Backend processing crash:", error);
+    console.error("Process error:", error.message);
     return res.status(500).json({ error: "Processing Failed", message: error.message });
   }
 });
@@ -179,11 +149,10 @@ router.post('/process', async (req, res) => {
 // --- POST /api/batch-override ---
 router.post('/batch-override', async (req, res) => {
   try {
-    const { batchId, newData } = req.body;
-    console.log(`Batch override requested: ${batchId}`, newData);
+    console.log("Batch override:", req.body.batchId);
     return res.json({ message: "Batch overridden successfully!" });
   } catch (error) {
-    return res.status(500).json({ error: "Failed to override batch.", message: error.message });
+    return res.status(500).json({ error: "Failed.", message: error.message });
   }
 });
 

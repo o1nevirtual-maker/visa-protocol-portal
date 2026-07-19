@@ -1,7 +1,6 @@
 const express = require('express');
 const cors = require('cors');
 const { processHandler } = require('./process_logic');
-const connectDB = require('./dbConnect');
 
 const app = express();
 
@@ -22,8 +21,5 @@ app.use((err, req, res, next) => {
   res.status(500).json({ error: "Internal Server Error", message: err.message });
 });
 
-// Connect to DB (non-blocking - won't crash if DB is unavailable)
-connectDB();
-
-// Export for Vercel
+// Export for Vercel - NO top-level DB connection that could crash
 module.exports = app;
