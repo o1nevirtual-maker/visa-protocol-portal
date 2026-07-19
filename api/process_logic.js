@@ -14,7 +14,9 @@ for (let i = 1; i <= 3; i++) {
     amount_usd: 100 * i,
     fee_amount: 1.50,
     usdt_amount: 98.50 * i,
+    gateway_auth_code: 'AUTH-SEED-' + i,
     gateway_status: 'APPROVED',
+    payout_confirmation: '0xseed' + i + 'abc',
     usdt_status_raw: 'CONFIRMED',
     createdAt: new Date(Date.now() - i * 60000).toISOString()
   });
@@ -24,7 +26,9 @@ async function getCollection() {
   try {
     const db = await connectDB();
     if (db) return db.collection('transactions');
-  } catch (e) {}
+  } catch (e) {
+    // Silent fallback
+  }
   return null;
 }
 
@@ -50,7 +54,7 @@ router.get('/stats', async (req, res) => {
       }
 
       return res.json({
-        status: "active (MongoDB - empty)",
+        status: "active (MongoDB - empty collection)",
         uptime: process.uptime(),
         timestamp: Date.now(),
         totalTransactions: totalTx,
@@ -59,9 +63,10 @@ router.get('/stats', async (req, res) => {
       });
     }
   } catch (e) {
-    console.warn("DB stats failed:", e.message);
+    console.warn("DB stats query failed:", e.message);
   }
 
+  // In-memory fallback
   const totalTx = transactions.length;
   const grossRevenue = transactions.reduce((s, t) => s + (t.amount_usd || 0), 0);
   const totalFees = transactions.reduce((s, t) => s + (t.fee_amount || 0), 0);
@@ -83,8 +88,11 @@ router.get('/transactions/:txId', async (req, res) => {
     if (col) {
       const { ObjectId } = require('mongodb');
       let query;
-      try { query = { _id: new ObjectId(req.params.txId) }; }
-      catch (e) { query = { _id: req.params.txId }; }
+      try {
+        query = { _id: new ObjectId(req.params.txId) };
+      } catch (e) {
+        query = { _id: req.params.txId };
+      }
 
       const tx = await col.findOne(query);
       if (tx) {
@@ -92,8 +100,11 @@ router.get('/transactions/:txId', async (req, res) => {
         return res.json(tx);
       }
     }
-  } catch (e) {}
+  } catch (e) {
+    console.warn("DB find failed:", e.message);
+  }
 
+  // In-memory fallback
   const tx = transactions.find(t => t._id === req.params.txId);
   if (tx) return res.json(tx);
   res.status(404).json({ error: "Transaction not found." });
@@ -104,8 +115,14 @@ router.post('/process', async (req, res) => {
   try {
     const { card_number, amount, usdtPayout } = req.body;
 
-    if (!card_number || !amount || !usdtPayout) {
-      return res.status(400).json({ error: "Missing required fields" });
+    if (!card_number) {
+      return res.status(400).json({ error: "Missing required field: card_number" });
+    }
+    if (!amount) {
+      return res.status(400).json({ error: "Missing required field: amount" });
+    }
+    if (!usdtPayout) {
+      return res.status(400).json({ error: "Missing required field: usdtPayout" });
     }
 
     counter++;
@@ -128,13 +145,13 @@ router.post('/process', async (req, res) => {
       createdAt: new Date()
     };
 
+    // Try MongoDB first
     let savedTx = {
       _id: 'tx-' + Date.now() + '-' + counter,
       ...record,
       createdAt: record.createdAt.toISOString()
     };
 
-    // Try MongoDB
     try {
       const col = await getCollection();
       if (col) {
@@ -144,12 +161,13 @@ router.post('/process', async (req, res) => {
           ...record,
           createdAt: record.createdAt.toISOString()
         };
+        console.log("Saved to MongoDB with ID:", savedTx._id);
       }
     } catch (dbErr) {
-      console.warn("DB save failed:", dbErr.message);
+      console.warn("Could not save to MongoDB, using in-memory:", dbErr.message);
     }
 
-    // Always save to in-memory
+    // Always keep in-memory backup
     transactions.push(savedTx);
 
     res.status(201).json({

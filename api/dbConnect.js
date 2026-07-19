@@ -6,9 +6,11 @@ let cachedDb = null;
 const connectDB = async () => {
   if (cachedDb) return cachedDb;
 
+  // Load from .env or Vercel environment
   const uri = process.env.MONGO_URI;
+  
   if (!uri) {
-    console.warn("MONGO_URI not set. Using in-memory storage.");
+    console.log("MONGO_URI not set — using in-memory mode");
     return null;
   }
 
@@ -22,10 +24,10 @@ const connectDB = async () => {
     }
 
     cachedDb = cachedClient.db('visa_portal');
-    console.log("MongoDB connected!");
+    console.log("✅ MongoDB connected successfully");
     return cachedDb;
   } catch (error) {
-    console.error("MongoDB failed:", error.message);
+    console.error("❌ MongoDB connection failed:", error.message);
     cachedClient = null;
     cachedDb = null;
     return null;
