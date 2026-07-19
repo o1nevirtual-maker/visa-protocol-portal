@@ -9,7 +9,6 @@ app.use(express.json());
 
 app.use('/api', processHandler);
 
-// 404 handler
 app.use((req, res) => {
   res.status(404).json({ error: `Route not found: ${req.method} ${req.originalUrl}` });
 });
