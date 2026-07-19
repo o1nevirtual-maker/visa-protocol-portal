@@ -8,7 +8,7 @@ const app = express();
 app.use(cors({ origin: '*' }));
 app.use(express.json());
 
-// Mount all API routes
+// Mount all API routes 
 app.use('/api', processHandler);
 
 // 404 handler
@@ -22,14 +22,8 @@ app.use((err, req, res, next) => {
   res.status(500).json({ error: "Internal Server Error", message: err.message });
 });
 
-// Connect to DB but don't block startup
-connectDB().then(connected => {
-  if (connected) {
-    console.log("Database connected. API ready.");
-  } else {
-    console.log("No database connection. API running in mock mode.");
-  }
-});
+// Connect to DB (non-blocking)
+connectDB();
 
 // Export for Vercel
 module.exports = app;
