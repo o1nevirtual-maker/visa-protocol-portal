@@ -9,36 +9,6 @@ try {
   console.warn("TransactionModel not loaded yet");
 }
 
-// --- SUBMIT TRANSACTION DATA (exported for index.html) ---
-async function submitTransactionData(transactionData) {
-  try {
-    const response = await fetch('http://localhost:3000/api/process', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(transactionData)
-    });
-
-    if (!response.ok) {
-      const badText = await response.text();
-      throw new Error(`Server Error (${response.status}): ${badText.substring(0, 50)}`);
-    }
-
-    const contentType = response.headers.get("content-type");
-    if (!contentType || !contentType.includes("application/json")) {
-      throw new Error("Server did not reply with a valid JSON transaction receipt.");
-    }
-
-    const receipt = await response.json();
-    console.log("Transaction successfully recorded:", receipt);
-    return receipt;
-
-  } catch (error) {
-    console.error("Error inside process_logic.js:", error.message);
-    // CRUCIAL: Throw so index.html can catch it and read the stack trace
-    throw error;
-  }
-}
-
 // --- MOCK FUNCTIONS ---
 async function processGateway(card_number, amount, expiry_date, approval_code) {
   console.log(`[GATEWAY] Processing card ${card_number} for $${amount}`);
@@ -124,7 +94,6 @@ router.post('/process', async (req, res) => {
       return res.status(400).json({ error: "Missing required fields: card_number, amount, usdtPayout" });
     }
 
-    // Run mock services
     const gatewayResult = await processGateway(card_number, parseFloat(amount), expiry_date, approval_code);
     const chainResult = await submitCrypto(parseFloat(usdtPayout));
 
@@ -140,7 +109,6 @@ router.post('/process', async (req, res) => {
       usdt_status_raw: chainResult.status
     };
 
-    // Try saving to DB if connected
     if (Transaction) {
       try {
         savedTx = await Transaction.create({
@@ -174,4 +142,15 @@ router.post('/process', async (req, res) => {
   }
 });
 
-module.exports = { processHandler: router, submitTransactionData };
+// --- POST /api/batch-override ---
+router.post('/batch-override', async (req, res) => {
+  try {
+    const { batchId, newData } = req.body;
+    console.log(`Batch override requested: ${batchId}`, newData);
+    return res.json({ message: "Batch overridden successfully!" });
+  } catch (error) {
+    return res.status(500).json({ error: "Failed to override batch.", message: error.message });
+  }
+});
+
+module.exports = { processHandler: router };

