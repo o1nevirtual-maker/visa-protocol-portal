@@ -1,8 +1,7 @@
 const express = require('express');
 const router = express.Router();
-const connectDB = require('./dbConnect');
 
-// In-memory fallback storage
+// In-memory storage
 const transactions = [];
 let counter = 0;
 
@@ -16,63 +15,20 @@ for (let i = 1; i <= 3; i++) {
     usdt_amount: 98.50 * i,
     gateway_auth_code: 'AUTH-SEED-' + i,
     gateway_status: 'APPROVED',
-    payout_confirmation: '0xseed' + i + 'abc',
+    payout_confirmation: '0xseed' + i,
     usdt_status_raw: 'CONFIRMED',
     createdAt: new Date(Date.now() - i * 60000).toISOString()
   });
 }
 
-async function getCollection() {
-  try {
-    const db = await connectDB();
-    if (db) return db.collection('transactions');
-  } catch (e) {
-    // Silent fallback
-  }
-  return null;
-}
-
 // --- GET /api/stats ---
-router.get('/stats', async (req, res) => {
-  try {
-    const col = await getCollection();
-    if (col) {
-      const totalTx = await col.countDocuments();
-      const revenueAgg = await col.aggregate([
-        { $group: { _id: null, total: { $sum: '$amount_usd' }, fees: { $sum: '$fee_amount' } } }
-      ]).toArray();
-
-      if (revenueAgg.length > 0) {
-        return res.json({
-          status: "active (MongoDB)",
-          uptime: process.uptime(),
-          timestamp: Date.now(),
-          totalTransactions: totalTx,
-          grossRevenue: parseFloat(revenueAgg[0].total.toFixed(2)),
-          totalFees: parseFloat(revenueAgg[0].fees.toFixed(2))
-        });
-      }
-
-      return res.json({
-        status: "active (MongoDB - empty collection)",
-        uptime: process.uptime(),
-        timestamp: Date.now(),
-        totalTransactions: totalTx,
-        grossRevenue: 0,
-        totalFees: 0
-      });
-    }
-  } catch (e) {
-    console.warn("DB stats query failed:", e.message);
-  }
-
-  // In-memory fallback
+router.get('/stats', (req, res) => {
   const totalTx = transactions.length;
   const grossRevenue = transactions.reduce((s, t) => s + (t.amount_usd || 0), 0);
   const totalFees = transactions.reduce((s, t) => s + (t.fee_amount || 0), 0);
 
   res.json({
-    status: "active (in-memory)",
+    status: "active",
     uptime: process.uptime(),
     timestamp: Date.now(),
     totalTransactions: totalTx,
@@ -82,47 +38,19 @@ router.get('/stats', async (req, res) => {
 });
 
 // --- GET /api/transactions/:txId ---
-router.get('/transactions/:txId', async (req, res) => {
-  try {
-    const col = await getCollection();
-    if (col) {
-      const { ObjectId } = require('mongodb');
-      let query;
-      try {
-        query = { _id: new ObjectId(req.params.txId) };
-      } catch (e) {
-        query = { _id: req.params.txId };
-      }
-
-      const tx = await col.findOne(query);
-      if (tx) {
-        tx._id = tx._id.toString();
-        return res.json(tx);
-      }
-    }
-  } catch (e) {
-    console.warn("DB find failed:", e.message);
-  }
-
-  // In-memory fallback
+router.get('/transactions/:txId', (req, res) => {
   const tx = transactions.find(t => t._id === req.params.txId);
   if (tx) return res.json(tx);
   res.status(404).json({ error: "Transaction not found." });
 });
 
 // --- POST /api/process ---
-router.post('/process', async (req, res) => {
+router.post('/process', (req, res) => {
   try {
     const { card_number, amount, usdtPayout } = req.body;
 
-    if (!card_number) {
-      return res.status(400).json({ error: "Missing required field: card_number" });
-    }
-    if (!amount) {
-      return res.status(400).json({ error: "Missing required field: amount" });
-    }
-    if (!usdtPayout) {
-      return res.status(400).json({ error: "Missing required field: usdtPayout" });
+    if (!card_number || !amount || !usdtPayout) {
+      return res.status(400).json({ error: "Missing required fields" });
     }
 
     counter++;
@@ -133,7 +61,8 @@ router.post('/process', async (req, res) => {
     const authCode = 'AUTH-' + Math.random().toString(36).slice(2, 10).toUpperCase();
     const payoutTxId = '0x' + Math.random().toString(36).slice(2, 18);
 
-    const record = {
+    const newTx = {
+      _id: 'tx-' + Date.now() + '-' + counter,
       card_number_masked: maskedCard,
       amount_usd: parseFloat(amount),
       fee_amount: 1.50,
@@ -142,42 +71,19 @@ router.post('/process', async (req, res) => {
       gateway_status: 'APPROVED',
       payout_confirmation: payoutTxId,
       usdt_status_raw: 'CONFIRMED',
-      createdAt: new Date()
+      createdAt: new Date().toISOString()
     };
 
-    // Try MongoDB first
-    let savedTx = {
-      _id: 'tx-' + Date.now() + '-' + counter,
-      ...record,
-      createdAt: record.createdAt.toISOString()
-    };
-
-    try {
-      const col = await getCollection();
-      if (col) {
-        const result = await col.insertOne(record);
-        savedTx = {
-          _id: result.insertedId.toString(),
-          ...record,
-          createdAt: record.createdAt.toISOString()
-        };
-        console.log("Saved to MongoDB with ID:", savedTx._id);
-      }
-    } catch (dbErr) {
-      console.warn("Could not save to MongoDB, using in-memory:", dbErr.message);
-    }
-
-    // Always keep in-memory backup
-    transactions.push(savedTx);
+    transactions.push(newTx);
 
     res.status(201).json({
       success: true,
       message: "Transaction processed successfully.",
       data: {
-        transactionId: savedTx._id,
+        transactionId: newTx._id,
         gatewayStatus: 'APPROVED',
         payoutTxID: payoutTxId,
-        finalRecord: savedTx
+        finalRecord: newTx
       }
     });
   } catch (error) {
@@ -189,18 +95,48 @@ router.post('/process', async (req, res) => {
 // --- POST /api/batch-override ---
 router.post('/batch-override', (req, res) => {
   try {
-    const { batchId, newData } = req.body;
+    const { batchId, newData, autoRun } = req.body;
+
+    // Auto-run mode: override ALL transactions with the new data
+    if (autoRun === true || autoRun === 'true') {
+      const overridden = transactions.map(t => {
+        const parsed = typeof newData === 'string' ? JSON.parse(newData) : (newData || {});
+        return { ...t, ...parsed };
+      });
+      
+      // Replace all transactions
+      transactions.length = 0;
+      transactions.push(...overridden);
+
+      return res.json({
+        message: "Batch auto-override completed!",
+        totalOverridden: transactions.length,
+        sampleRecord: transactions[0] || null
+      });
+    }
+
+    // Single batch override by ID
     if (batchId && newData) {
       const idx = transactions.findIndex(t => t._id === batchId);
       if (idx !== -1) {
         const parsed = typeof newData === 'string' ? JSON.parse(newData) : newData;
         transactions[idx] = { ...transactions[idx], ...parsed };
-        return res.json({ message: "Batch overridden!", transaction: transactions[idx] });
+        return res.json({
+          message: "Batch overridden!",
+          transaction: transactions[idx]
+        });
       }
+      return res.status(404).json({ error: "Transaction ID not found" });
     }
-    res.json({ message: "Batch overridden!" });
+
+    // If neither autoRun nor batchId, return current list
+    res.json({
+      message: "No override action taken. Send batchId + newData, or autoRun=true + newData.",
+      totalTransactions: transactions.length,
+      transactions: transactions
+    });
   } catch (e) {
-    res.json({ message: "Batch overridden!" });
+    res.status(500).json({ error: "Override failed", message: e.message });
   }
 });
 
