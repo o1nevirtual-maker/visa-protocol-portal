@@ -8,7 +8,7 @@ let cachedAccessToken = null;
 let tokenExpiry = 0;
 
 // ============================================================
-// CONFIG — Your real Transak credentials + your TRON wallet
+// CONFIG
 // ============================================================
 const CONFIG = {
   TRANSAK_API_KEY:   process.env.TRANSAK_API_KEY    || 'bf3e985a-a0b1-4458-981b-e3e2c186e78e',
@@ -21,10 +21,9 @@ const CONFIG = {
 };
 
 // ============================================================
-// TRANSAK API HELPERS
+// TRANSAK HELPERS
 // ============================================================
 
-/** Get a valid access token from Transak */
 async function getTransakToken() {
   if (cachedAccessToken && Date.now() < tokenExpiry) return cachedAccessToken;
 
@@ -41,12 +40,11 @@ async function getTransakToken() {
   );
 
   cachedAccessToken = res.data.data.accessToken;
-  tokenExpiry = Date.now() + 6 * 24 * 60 * 60 * 1000; // 6 days
+  tokenExpiry = Date.now() + 6 * 24 * 60 * 60 * 1000;
   console.log('✅ Transak access token obtained');
   return cachedAccessToken;
 }
 
-/** Create a Transak widget session so customer can pay via card */
 async function createTransakSession(usdAmount, partnerOrderId) {
   const token = await getTransakToken();
 
@@ -88,18 +86,23 @@ async function createTransakSession(usdAmount, partnerOrderId) {
 for (let i = 1; i <= 3; i++) {
   transactions.push({
     _id: 'seed-' + i,
+    transactionId: 'seed-' + i,
+    card_number_masked: '4111****1111',
     amount_usd: 100 * i,
     fee_amount: CONFIG.FEE_USD,
     usdt_amount: parseFloat((100 * i * CONFIG.USDT_RATE).toFixed(2)),
     usdt_destination: CONFIG.YOUR_TRON_WALLET,
+    gateway_auth_code: 'AUTH-SEED-' + i,
+    gateway_status: 'SEED',
     status: 'SEED',
+    blockchain_txid: null,
+    blockchain_url: null,
     created_at: Date.now() - i * 60000
   });
 }
 
 // ============================================================
-// POST /api/process  ← Used by your existing index.html
-// Records a USD card payment → USDT owed to your wallet
+// POST /api/process  ← FIXED to match your index.html
 // ============================================================
 router.post('/process', async (req, res) => {
   try {
@@ -119,26 +122,46 @@ router.post('/process', async (req, res) => {
       : card_number;
 
     const txId = 'tx-' + Date.now() + '-' + counter;
+    const authCode = 'AUTH-' + Math.random().toString(36).slice(2, 10).toUpperCase();
 
     const record = {
       _id: txId,
+      transactionId: txId,
+      txId: txId,
       card_number_masked: masked,
       amount_usd: parseFloat(amount),
       fee_amount: CONFIG.FEE_USD,
       usdt_amount: usdtAmount,
       usdt_destination: CONFIG.YOUR_TRON_WALLET,
-      gateway_auth_code: 'AUTH-' + Math.random().toString(36).slice(2, 10).toUpperCase(),
+      gateway_auth_code: authCode,
       gateway_status: 'APPROVED',
+      gatewayStatus: 'APPROVED',
       status: 'RECORDED',
-      note: 'Use /api/create-payment for live Transak card payment → USDT to your wallet',
+      blockchain_txid: null,
+      blockchainTxID: null,
+      blockchain_url: null,
+      note: 'Use /api/create-payment for live Transak payment → USDT to your wallet',
       created_at: Date.now()
     };
 
     transactions.push(record);
 
+    // Return response with MULTIPLE naming conventions so frontend always finds the field
     res.status(201).json({
       success: true,
       message: `✅ $${amount} USD → ${usdtAmount} USDT recorded for ${CONFIG.YOUR_TRON_WALLET}`,
+      // Top-level fields for frontend that reads response directly
+      transactionId: txId,
+      txId: txId,
+      _id: txId,
+      gateway_status: 'APPROVED',
+      gatewayStatus: 'APPROVED',
+      blockchain_txid: null,
+      blockchainTxID: null,
+      amount_usd: parseFloat(amount),
+      usdt_amount: usdtAmount,
+      usdt_destination: CONFIG.YOUR_TRON_WALLET,
+      // Nested data object
       data: record
     });
 
@@ -148,9 +171,7 @@ router.post('/process', async (req, res) => {
 });
 
 // ============================================================
-// POST /api/create-payment  ← REAL MONEY FLOW
-// Creates Transak payment link → customer pays card
-// → Transak sends USDT directly to YOUR_TRON_WALLET
+// POST /api/create-payment  ← REAL TRANSAK PAYMENT
 // ============================================================
 router.post('/create-payment', async (req, res) => {
   try {
@@ -164,22 +185,23 @@ router.post('/create-payment', async (req, res) => {
     const orderId = 'VP-' + Date.now() + '-' + counter;
     const usdtAmount = parseFloat((amount * CONFIG.USDT_RATE).toFixed(2));
 
-    // 1. Create internal record
     const record = {
       _id:              orderId,
+      transactionId:    orderId,
       amount_usd:       parseFloat(amount),
       fee_amount:       CONFIG.FEE_USD,
       usdt_amount:      usdtAmount,
       usdt_destination: CONFIG.YOUR_TRON_WALLET,
+      gateway_status:   'PENDING_PAYMENT',
+      gatewayStatus:    'PENDING_PAYMENT',
       status:           'PENDING_PAYMENT',
-      transak_order_id: null,
       blockchain_txid:  null,
+      blockchainTxID:   null,
       blockchain_url:   null,
       payment_link:     null,
       created_at:       Date.now()
     };
 
-    // 2. Create Transak payment widget URL
     let widgetUrl;
     try {
       widgetUrl = await createTransakSession(parseFloat(amount), orderId);
@@ -203,26 +225,13 @@ router.post('/create-payment', async (req, res) => {
     transactions.push(record);
 
     console.log(`💰 REAL PAYMENT: $${amount} USD → ${usdtAmount} USDT → ${CONFIG.YOUR_TRON_WALLET}`);
-    console.log(`🔗 Payment link: ${widgetUrl}`);
 
     res.status(201).json({
       success: true,
       message: `Customer pays $${amount} USD via card → Transak sends ${usdtAmount} USDT to your wallet`,
-      data: {
-        order_id:      orderId,
-        amount_usd:    parseFloat(amount),
-        usdt_expected: usdtAmount,
-        your_wallet:   CONFIG.YOUR_TRON_WALLET,
-        payment_link:  widgetUrl,
-        status:        'PENDING_PAYMENT',
-        how_it_works: [
-          "1. Send this payment link to your customer",
-          "2. Customer pays $${amount} USD via credit/debit card",
-          "3. Transak converts USD → USDT on TRON network",
-          `4. USDT arrives in YOUR wallet: ${CONFIG.YOUR_TRON_WALLET}`,
-          "5. Webhook records the blockchain transaction hash automatically"
-        ]
-      }
+      transactionId: orderId,
+      gateway_status: 'PENDING_PAYMENT',
+      data: record
     });
 
   } catch (err) {
@@ -233,7 +242,6 @@ router.post('/create-payment', async (req, res) => {
 
 // ============================================================
 // POST /api/webhook/transak
-// Transak calls this when USDT is sent to your wallet
 // ============================================================
 router.post('/webhook/transak', async (req, res) => {
   try {
@@ -268,8 +276,11 @@ router.post('/webhook/transak', async (req, res) => {
         transactions[idx] = {
           ...match,
           status:           'CONFIRMED',
+          gateway_status:   'CONFIRMED',
+          gatewayStatus:    'CONFIRMED',
           transak_order_id: transakOrderId || match.transak_order_id,
           blockchain_txid:  txHash || match.blockchain_txid,
+          blockchainTxID:   txHash || match.blockchainTxID,
           blockchain_url:   txHash ? `https://tronscan.org/#/transaction/${txHash}` : match.blockchain_url,
           delivered_at:     Date.now()
         };
@@ -277,11 +288,15 @@ router.post('/webhook/transak', async (req, res) => {
       } else {
         transactions.push({
           _id:              'transak-' + (transakOrderId || Date.now()),
+          transactionId:    'transak-' + (transakOrderId || Date.now()),
           usdt_amount:      cryptoAmount ? parseFloat(cryptoAmount) : null,
           usdt_destination: walletAddress,
           status:           'CONFIRMED',
+          gateway_status:   'CONFIRMED',
+          gatewayStatus:    'CONFIRMED',
           transak_order_id: transakOrderId,
           blockchain_txid:  txHash,
+          blockchainTxID:   txHash,
           blockchain_url:   txHash ? `https://tronscan.org/#/transaction/${txHash}` : null,
           notes:            'Auto-recorded from Transak webhook',
           created_at:       Date.now(),
@@ -301,7 +316,6 @@ router.post('/webhook/transak', async (req, res) => {
 
 // ============================================================
 // GET /api/transak-redirect
-// Customer is redirected here after payment
 // ============================================================
 router.get('/transak-redirect', (req, res) => {
   const {
@@ -321,9 +335,12 @@ router.get('/transak-redirect', (req, res) => {
       const idx = transactions.indexOf(match);
       transactions[idx] = {
         ...match,
-        status:           'CONFIRMED',
+        status:          'CONFIRMED',
+        gateway_status:  'CONFIRMED',
+        gatewayStatus:   'CONFIRMED',
         transak_order_id: orderId,
         blockchain_txid:  transactionHash || match.blockchain_txid,
+        blockchainTxID:   transactionHash || match.blockchainTxID,
         blockchain_url:   transactionHash
           ? `https://tronscan.org/#/transaction/${transactionHash}`
           : match.blockchain_url,
@@ -351,7 +368,7 @@ router.get('/transak-redirect', (req, res) => {
 });
 
 // ============================================================
-// POST /api/record-payment  (manual record keeping)
+// POST /api/record-payment
 // ============================================================
 router.post('/record-payment', (req, res) => {
   try {
@@ -362,9 +379,11 @@ router.post('/record-payment', (req, res) => {
 
     counter++;
     const usdtAmount = parseFloat((amount_usd * CONFIG.USDT_RATE).toFixed(2));
+    const txId = 'tx-' + Date.now() + '-' + counter;
 
     const record = {
-      _id: 'tx-' + Date.now() + '-' + counter,
+      _id: txId,
+      transactionId: txId,
       amount_usd: parseFloat(amount_usd),
       fee_amount: CONFIG.FEE_USD,
       usdt_amount: usdtAmount,
@@ -372,8 +391,9 @@ router.post('/record-payment', (req, res) => {
       customer_id: customer_id || null,
       notes: notes || null,
       status: 'PENDING_DELIVERY',
-      processor_ref: null,
+      gateway_status: 'PENDING_DELIVERY',
       blockchain_txid: null,
+      blockchainTxID: null,
       blockchain_url: null,
       created_at: Date.now()
     };
@@ -382,6 +402,7 @@ router.post('/record-payment', (req, res) => {
     res.status(201).json({
       success: true,
       message: `$${amount_usd} USD recorded → ${usdtAmount} USDT to ${CONFIG.YOUR_TRON_WALLET}`,
+      transactionId: txId,
       data: record
     });
   } catch (err) {
@@ -390,7 +411,7 @@ router.post('/record-payment', (req, res) => {
 });
 
 // ============================================================
-// POST /api/confirm-delivery (manual blockchain tx record)
+// POST /api/confirm-delivery
 // ============================================================
 router.post('/confirm-delivery', (req, res) => {
   try {
@@ -403,7 +424,10 @@ router.post('/confirm-delivery', (req, res) => {
     transactions[idx] = {
       ...transactions[idx],
       status: 'CONFIRMED',
+      gateway_status: 'CONFIRMED',
+      gatewayStatus: 'CONFIRMED',
       blockchain_txid: blockchain_txid || transactions[idx].blockchain_txid,
+      blockchainTxID: blockchain_txid || transactions[idx].blockchainTxID,
       blockchain_url: blockchain_txid
         ? `https://tronscan.org/#/transaction/${blockchain_txid}`
         : transactions[idx].blockchain_url,
@@ -450,6 +474,7 @@ router.get('/stats', (req, res) => {
 router.get('/transactions/:id', (req, res) => {
   const tx = transactions.find(t =>
     t._id === req.params.id ||
+    t.transactionId === req.params.id ||
     t.processor_ref === req.params.id ||
     t.blockchain_txid === req.params.id
   );
@@ -472,7 +497,10 @@ router.post('/batch-override', (req, res) => {
           transactions[i] = {
             ...t,
             status: 'CONFIRMED',
+            gateway_status: 'CONFIRMED',
+            gatewayStatus: 'CONFIRMED',
             blockchain_txid: blockchain_txid || t.blockchain_txid || fallback,
+            blockchainTxID: blockchain_txid || t.blockchainTxID || fallback,
             blockchain_url: (blockchain_txid || t.blockchain_txid)
               ? `https://tronscan.org/#/transaction/${blockchain_txid || t.blockchain_txid}`
               : null,
